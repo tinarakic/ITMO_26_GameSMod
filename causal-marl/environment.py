@@ -4,78 +4,115 @@ from data_utils import normalize_data
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
 class CausalEnv:
 
     def __init__(self, data, graph, lookback=10):
+
         self.raw_data = data.copy()
-        self.data, self.scalers = normalize_data(
-            data.select_dtypes(include=[np.number]).copy()
+
+        # --------- FULL TENSOR (BIG SPEEDUP) ----------
+        numeric = data.select_dtypes(include=[np.number]).copy()
+        self.data, self.scalers = normalize_data(numeric)
+
+        self.data = torch.tensor(
+            self.data.values,
+            dtype=torch.float32,
+            device=device
         )
 
         self.graph = graph
         self.lookback = lookback
+
         self.vars = list(graph.nodes())
+
+        # precompute valid columns mask
+        self.valid_vars = [
+            v for v in self.vars
+            if v in numeric.columns
+        ]
+
+        # precompute parent index map (FAST ACCESS)
+        self.parents = {
+            v: [
+                p for p in graph.predecessors(v)
+                if p in numeric.columns
+            ]
+            for v in self.valid_vars
+        }
+
+        # map var → column index
+        self.var_to_idx = {
+            v: i for i, v in enumerate(numeric.columns)
+        }
+
         self.t = lookback
 
+        self.T = self.data.shape[0]
+
+    # --------------------------------------------------
     def reset(self):
         self.t = self.lookback
         return self._obs()
 
+    # --------------------------------------------------
     def _obs(self):
+
         obs = {}
 
-        for v in self.vars:
-            if v not in self.data.columns:
-                continue
+        t = self.t
+        L = self.lookback
 
-            parents = list(self.graph.predecessors(v))
+        for v in self.valid_vars:
+
             feats = []
 
-            for p in parents:
-                if p not in self.data.columns:
-                    continue
+            # -------- PARENTS ----------
+            for p in self.parents[v]:
 
                 lag = self.graph.edges[p, v]["lag"]
 
-                start = self.t - self.lookback - lag
-                end = self.t - lag
+                p_idx = self.var_to_idx[p]
 
-                x = self.data[p].values[start:end]
+                start = t - L - lag
+                end = t - lag
 
-                if len(x) < self.lookback:
-                    x = np.pad(x, (self.lookback - len(x), 0))
+                # direct tensor slicing (NO numpy)
+                x = self.data[start:end, p_idx]
 
                 feats.append(x)
 
-            self_series = self.data[v].values[self.t - self.lookback:self.t]
+            # -------- SELF SERIES ----------
+            v_idx = self.var_to_idx[v]
+            self_series = self.data[t - L:t, v_idx]
+
             feats.append(self_series)
 
-            obs[v] = torch.tensor(
-                np.stack(feats, axis=-1),
-                dtype=torch.float32
-            ).unsqueeze(0)
+            obs[v] = torch.stack(feats, dim=-1).unsqueeze(0)
 
         return obs
 
+    # --------------------------------------------------
     def step(self, actions):
+
         reward = 0.0
 
-        for v in self.vars:
-            if v not in self.data.columns:
-                continue
+        t = self.t
 
-            true = torch.as_tensor(
-                self.data[v].values[self.t],
-                device=device
-            )
+        # -------- VECTORIZED REWARD ----------
+        for v in self.valid_vars:
 
+            v_idx = self.var_to_idx[v]
+
+            true = self.data[t, v_idx]
             pred = actions[v].detach().flatten()[0]
 
-            reward += -abs(true - pred)
+            reward += -torch.abs(true - pred)
 
-        reward /= len(self.vars)
+        reward = reward / len(self.valid_vars)
 
+        # move time forward
         self.t += 1
-        done = self.t >= len(self.data) - 1
+        done = self.t >= self.T - 1
 
         return self._obs(), reward, done
