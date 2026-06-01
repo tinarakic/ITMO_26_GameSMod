@@ -108,7 +108,7 @@ def train(
             for v in env.vars:
                 if v not in obs:
                     continue
-                obs[v] = obs[v].unsqueeze(0).unsqueeze(0).to(device)
+                obs[v] = obs[v].to(device)
                 a, lp = policies[v].sample(obs[v])
                 actions[v] = a
                 step_logp[v] = lp  # keep tensor for gradients
