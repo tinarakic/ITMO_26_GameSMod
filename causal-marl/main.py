@@ -8,7 +8,7 @@ from visualization import plot_training_metrics
 from causal import plot_causal
 
 # LOAD DATA
-data = pd.read_csv("data.csv").select_dtypes(include=[np.number]).tail(100)
+data = pd.read_csv("data.csv").select_dtypes(include=[np.number])
 valid_nodes = list(data.columns)
 graph = load_scm_graph("scm.csv", valid_nodes)
 graph = graph.subgraph(valid_nodes).copy()
@@ -31,8 +31,8 @@ graph = graph.subgraph(valid_nodes).copy()
 ) = train(
     data = data,
     graph = graph,
-    episodes = 30,
-    lookback = 72,
+    episodes = 100,
+    lookback = 168,
     log_every = 50
 )
 
