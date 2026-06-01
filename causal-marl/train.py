@@ -46,7 +46,7 @@ def train(
     optimizers = {}
 
     for v in env.vars:
-        policies[v] = Policy(obs[v].shape[-1]).to(device)
+        policies[v] = Policy(obs[v].shape[-1], num_agents = 1).to(device)
         optimizers[v] = torch.optim.Adam(policies[v].parameters(), lr=1e-3)
 
     reward_window = deque(maxlen=100)
