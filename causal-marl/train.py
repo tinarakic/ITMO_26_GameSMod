@@ -144,10 +144,10 @@ def train(data, graph, episodes=10, gamma=0.99, lookback=10, log_every=50, check
                 ep_var_mape[v].append(mape)
 
             log_probs.append(step_logp)
-            rewards.append(torch.tensor(r, dtype=torch.float32, device=device))
+            rewards.append(torch.as_tensor(r, dtype=torch.float32, device=device))
+            reward_window.append(float(r))
 
             ep_reward_sum += r
-            reward_window.append(r)
 
             # per agent reward split
             for v in env.vars:
