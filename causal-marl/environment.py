@@ -4,9 +4,10 @@ from data_utils import normalize_data
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
 class CausalEnv:
 
-    def __init__(self, data, graph, lookback=10):
+    def __init__(self, data, graph, lookback=10, horizon=1):
         self.raw_data = data.copy()
         self.data, self.scalers = normalize_data(
             data.select_dtypes(include=[np.number]).copy()
@@ -14,6 +15,8 @@ class CausalEnv:
 
         self.graph = graph
         self.lookback = lookback
+        self.H = horizon
+
         self.vars = list(graph.nodes())
         self.t = lookback
 
@@ -60,22 +63,29 @@ class CausalEnv:
     def step(self, actions):
         reward = 0.0
 
+        eps = 1e-8
+
         for v in self.vars:
             if v not in self.data.columns:
                 continue
 
-            true = torch.as_tensor(
-                self.data[v].values[self.t],
-                device=device
+            pred = actions[v].detach().squeeze()  # (H,)
+            true = self.data[v].values[self.t:self.t + self.H]
+
+            if len(true) < self.H:
+                break
+
+            true = torch.tensor(true, dtype=torch.float32)
+
+            mape = torch.mean(
+                torch.abs((true - pred.cpu()) / (true + eps))
             )
 
-            pred = actions[v].detach().flatten()[0]
-
-            reward += -abs(true - pred)
+            reward += -mape.item()
 
         reward /= len(self.vars)
 
         self.t += 1
-        done = self.t >= len(self.data) - 1
+        done = self.t >= len(self.data) - self.H - 1
 
         return self._obs(), reward, done

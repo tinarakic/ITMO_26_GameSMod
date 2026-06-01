@@ -5,40 +5,36 @@ from torch.distributions import Normal
 
 class Policy(nn.Module):
     """
-    Fully vectorized multi-agent policy:
-    - 1 shared LSTM
-    - N agent-specific heads
-    - SCM-consistent observation handling
+    Shared LSTM + multi-agent + H-step forecasting head
     """
 
-    def __init__(self, input_size, num_agents, hidden=64):
+    def __init__(self, input_size, num_agents, hidden=64, horizon=1):
         super().__init__()
 
         self.num_agents = num_agents
         self.hidden = hidden
+        self.H = horizon
 
-        # shared temporal encoder
         self.lstm = nn.LSTM(input_size, hidden, batch_first=True)
 
-        # agent-specific heads
-        self.mu = nn.Linear(hidden, num_agents)
-        self.value = nn.Linear(hidden, num_agents)
+        # output per agent per horizon
+        self.mu = nn.Linear(hidden, num_agents * self.H)
+        self.value = nn.Linear(hidden, num_agents * self.H)
 
-        # per-agent volatility
-        self.log_std = nn.Parameter(torch.zeros(num_agents))
+        self.log_std = nn.Parameter(torch.zeros(num_agents, self.H))
 
     def forward(self, x):
         """
-        x: (1, L, N * F_max)
+        x: (1, L, F)
         """
 
         h, _ = self.lstm(x)
         h = h[:, -1, :]  # (1, hidden)
 
-        mu = self.mu(h)        # (1, N)
-        value = self.value(h)  # (1, N)
+        mu = self.mu(h).view(1, self.num_agents, self.H)
+        value = self.value(h).view(1, self.num_agents, self.H)
 
-        std = torch.exp(self.log_std).unsqueeze(0)  # (1, N)
+        std = torch.exp(self.log_std).unsqueeze(0)  # (1, N, H)
 
         return mu, std, value
 
@@ -47,7 +43,7 @@ class Policy(nn.Module):
 
         dist = Normal(mu, std)
 
-        action = dist.rsample()      # (1, N)
+        action = dist.rsample()   # (1, N, H)
         logp = dist.log_prob(action).sum()
 
         return action, logp, value
