@@ -102,10 +102,7 @@ def train(
 
             next_obs, reward, done = env.step(actions)
 
-            reward_t = torch.as_tensor(
-                float(reward),
-                device=device
-            )
+            reward_t = torch.as_tensor(float(reward), device=device)
 
             reward_window.append(float(reward))
             ep_reward_sum += float(reward)
@@ -121,7 +118,6 @@ def train(
                             continue
 
                         next_obs[v] = next_obs[v].to(device)
-
                         _, _, nv = policies[v].forward(next_obs[v])
                         next_values[v] = nv.squeeze()
                 else:
@@ -129,8 +125,8 @@ def train(
                         next_values[v] = torch.tensor(0.0, device=device)
 
             # --------- UPDATE (ONLINE ACTOR-CRITIC) ----------
+            total_loss = 0.0
             for v in env.vars:
-
                 if v not in logps:
                     continue
 
@@ -144,15 +140,17 @@ def train(
 
                 loss = actor_loss + 0.5 * critic_loss
 
-                optimizers[v].zero_grad()
-                loss.backward()
-                optimizers[v].step()
+                total_loss += loss
 
-                ep_agent_losses[v].append(
-                    float(loss.detach().cpu())
-                )
-
+                ep_agent_losses[v].append(float(loss.detach().cpu()))
                 ep_agent_rewards[v] += float(reward) / len(env.vars)
+
+            # single backward pass per step
+            for v in env.vars:
+                optimizers[v].zero_grad()
+            total_loss.backward()
+            for v in env.vars:
+                optimizers[v].step()
 
             obs = next_obs
 
@@ -193,7 +191,9 @@ def train(
                 np.mean(ep_agent_losses[v]) if ep_agent_losses[v] else 0.0
             )
 
-        loss_per_epoch.append(0.0)
+        # proper epoch loss
+        epoch_loss = np.mean([np.mean(ep_agent_losses[v]) for v in env.vars])
+        loss_per_epoch.append(epoch_loss)
 
         causal_importance_per_epoch.append(
             compute_causal_importance(env, policies)
@@ -215,19 +215,13 @@ def train(
 
             torch.save(
                 {
-                    "policies": {
-                        v: best_policies[v].state_dict()
-                        for v in env.vars
-                    },
+                    "policies": {v: best_policies[v].state_dict() for v in env.vars},
                     "graph": env.graph,
                     "best_epoch": best_epoch_idx,
                     "reward_per_epoch": reward_per_epoch,
                     "loss_per_epoch": loss_per_epoch,
                     "causal_importance_per_epoch": causal_importance_per_epoch,
-                    "input_sizes": {
-                        v: best_policies[v].lstm.input_size
-                        for v in env.vars
-                    },
+                    "input_sizes": {v: best_policies[v].lstm.input_size for v in env.vars},
                 },
                 checkpoint_path,
             )
