@@ -9,7 +9,6 @@ class CausalEnv:
 
     def __init__(self, data, graph, lookback=10, horizon=1):
         self.raw_data = data.copy()
-
         self.data, self.scalers = normalize_data(
             data.select_dtypes(include=[np.number]).copy()
         )
@@ -17,20 +16,13 @@ class CausalEnv:
         self.graph = graph
         self.lookback = lookback
         self.H = horizon
-
         self.vars = list(graph.nodes())
         self.t = lookback
 
-    # ======================================================
-    # RESET
-    # ======================================================
     def reset(self):
         self.t = self.lookback
         return self._obs()
 
-    # ======================================================
-    # OBSERVATION
-    # ======================================================
     def _obs(self):
         obs = {}
 
@@ -46,7 +38,6 @@ class CausalEnv:
                     continue
 
                 lag = self.graph.edges[p, v]["lag"]
-
                 start = self.t - self.lookback - lag
                 end = self.t - lag
 
@@ -57,7 +48,7 @@ class CausalEnv:
 
                 feats.append(x)
 
-            # include self-history
+            # Include self-history
             self_series = self.data[v].values[self.t - self.lookback:self.t]
             feats.append(self_series)
 
@@ -68,17 +59,11 @@ class CausalEnv:
 
         return obs
 
-    # ======================================================
-    # STEP (FIXED: PER-AGENT REWARDS)
-    # ======================================================
     def step(self, actions):
-
-        eps = 1e-8
-
         rewards = {}
 
         # ==================================================
-        # compute per-variable rewards
+        # compute per-variable rewards as negative MAE
         # ==================================================
         for v in self.vars:
 
@@ -94,19 +79,15 @@ class CausalEnv:
             if len(true) < self.H:
                 continue
 
+            # Convert to torch tensor (normalized values)
             true = torch.tensor(true, dtype=torch.float32)
+            pred = pred.float()
 
-            # normalized error
-            mape = torch.mean(
-                torch.abs((true - pred.cpu()) / (true + eps))
-            )
+            # MAE reward on normalized values
+            mae = torch.mean(torch.abs(true - pred))
 
-            # reward per agent (negative error)
-            rewards[v] = -mape.item()
-
-        # ==================================================
-        # IMPORTANT: no averaging anymore
-        # ==================================================
+            # reward per agent = -MAE
+            rewards[v] = -float(mae)
 
         self.t += 1
         done = self.t >= len(self.data) - self.H - 1

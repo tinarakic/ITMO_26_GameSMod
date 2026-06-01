@@ -157,7 +157,7 @@ while True:
     print("\nOptions:")
     print("1 - Compare Reward across parameters")
     print("2 - Compare MSE across parameters")
-    print("3 - Compare MAPE across parameters")
+    print("3 - Compare MAE across parameters")
     print("q - quit")
 
     choice = input("Select: ").strip().lower()
@@ -172,11 +172,11 @@ while True:
         plot_reward_comparison(results)
 
     # -----------------------------
-    # MSE / MAPE COMPARISON
+    # MSE / MAE COMPARISON
     # -----------------------------
     elif choice in ["2", "3"]:
 
-        metric = "mse" if choice == "2" else "mape"
+        metric = "mse" if choice == "2" else "mae"
 
         sample_param = list(results.keys())[0]
         vars_list = list(results[sample_param]["forecast_metrics"].keys())

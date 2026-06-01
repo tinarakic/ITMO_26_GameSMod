@@ -46,7 +46,7 @@ def plot_metric(metrics, variable, metric):
     if metric == "mse":
         plt.ylabel("MSE")
     else:
-        plt.ylabel("MAPE (%)")
+        plt.ylabel("MAE")
 
     plt.grid(True)
     plt.tight_layout()
@@ -77,13 +77,13 @@ def main():
             continue
 
         metric = input(
-            "Metric [mse/mape]: "
+            "Metric [mse/mae]: "
         ).strip().lower()
 
-        if metric not in ["mse", "mape"]:
+        if metric not in ["mse", "mae"]:
 
             print(
-                "\nChoose mse or mape.\n"
+                "\nChoose mse or mae.\n"
             )
 
             continue

@@ -106,7 +106,7 @@ def train(
     causal_scores = []
 
     forecast_metrics_per_epoch = {
-        v: {"mse": [], "mape": []}
+        v: {"mse": [], "mae": []}
         for v in env.vars
     }
 
@@ -182,6 +182,7 @@ def train(
                     f"[EP {ep+1}/{episodes}] | "
                     f"STEP={step_counter} | "
                     f"REWARD={ep_reward_sum:.4f} | "
+
                     f"ETA={eta/60:.1f}min"
                 )
 
@@ -273,31 +274,34 @@ def train(
             compute_causal_importance(env, policies)
         )
 
+            
+    # get the rewards (which are already -MAE per step in your env.step)
         for v in env.vars:
-
+            
+            # get the rewards (which are already -MAE per step in your env.step)
             r = trajectories[v]["rewards"]
-
+            
+            # Save the reward per agent (negative MAE)
             reward_per_agent[v].append(
                 np.mean(r) if len(r) > 0 else 0.0
             )
-
             
+            # Save metrics: MSE and MAE directly from the reward
             if len(r) > 0:
                 arr = np.array(r, dtype=np.float32)
+                
+                # MSE in terms of reward
                 mse = float(np.mean(arr ** 2))
-                true = arr[1:]
-                pred = arr[:-1]
-
-                if len(true) > 0:
-                    mape = float(np.mean(np.abs((true - pred) / (np.abs(true) + 1e-8))) * 100)
-                else:
-                    mape = 0.0
+                
+                # MAE = -reward (because reward = -MAE)
+                mae = -float(np.mean(arr))
             else:
-                mse, mape = 0.0, 0.0
+                mse, mae = 0.0, 0.0
 
             forecast_metrics_per_epoch[v]["mse"].append(mse)
-            forecast_metrics_per_epoch[v]["mape"].append(mape)
+            forecast_metrics_per_epoch[v]["mae"].append(mae)
 
+        # optional: aggregate MSE across variables
         mse_per_epoch.append(epoch_avg_reward ** 2)
 
         # ======================================================
