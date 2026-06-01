@@ -173,17 +173,35 @@ def train(
             obs = next_obs
 
             if step_counter % log_every == 0:
+                now = time.time()
+                elapsed_total = now - start_time
 
-                eta = (time.time() - start_time) / max(global_step, 1) * (
-                    total_steps - global_step
-                )
+                # ----------------------------
+                # GLOBAL ETA (TOTAL TRAINING)
+                # ----------------------------
+                global_frac = global_step / max(total_steps, 1)
+                global_frac = max(global_frac, 1e-8)
 
+                eta_total = elapsed_total * (1 - global_frac) / global_frac
+
+                # ----------------------------
+                # EPOCH ETA (CURRENT EPISODE ONLY)
+                # ----------------------------
+                # estimate time per step from global history
+                time_per_step = elapsed_total / max(global_step, 1)
+
+                remaining_epoch_steps = max(len(data) - step_counter, 0)
+                eta_epoch = time_per_step * remaining_epoch_steps
+
+                # ----------------------------
+                # PRINT
+                # ----------------------------
                 print(
                     f"[EP {ep+1}/{episodes}] | "
                     f"STEP={step_counter} | "
                     f"REWARD={ep_reward_sum:.4f} | "
-
-                    f"ETA={eta/60:.1f}min"
+                    f"ETA_EPOCH={eta_epoch/60:.1f}min | "
+                    f"ETA_TOTAL={eta_total/60:.1f}min"
                 )
 
         # ======================================================
