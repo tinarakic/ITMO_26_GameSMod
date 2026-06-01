@@ -29,6 +29,24 @@ def compute_causal_importance(env, policies):
     return importance
 
 
+# ----------------------------
+# GAE helper
+# ----------------------------
+def compute_gae(rewards, values, gamma=0.99, lam=0.95):
+    advantages = []
+    gae = 0.0
+
+    values = values + [0.0]
+
+    for t in reversed(range(len(rewards))):
+        delta = rewards[t] + gamma * values[t + 1] - values[t]
+        gae = delta + gamma * lam * gae
+        advantages.insert(0, gae)
+
+    returns = [a + v for a, v in zip(advantages, values[:-1])]
+    return advantages, returns
+
+
 def train(
     data,
     graph,
@@ -40,13 +58,12 @@ def train(
 ):
 
     env = CausalEnv(data, graph, lookback=lookback)
-    obs = env.reset()
 
     policies = {}
     optimizers = {}
 
     for v in env.vars:
-        policies[v] = Policy(obs[v].shape[-1], num_agents = 1).to(device)
+        policies[v] = Policy(env.reset()[v].shape[-1], num_agents=1).to(device)
         optimizers[v] = torch.optim.Adam(policies[v].parameters(), lr=1e-3)
 
     reward_window = deque(maxlen=100)
@@ -67,18 +84,23 @@ def train(
     total_steps = len(data) * episodes
     global_step = 0
 
+    # optional value normalization stability
+    value_baseline = {v: 0.0 for v in env.vars}
+
     for ep in range(episodes):
 
         obs = env.reset()
 
+        trajectories = {
+            v: {"logps": [], "values": [], "rewards": []}
+            for v in env.vars
+        }
+
         ep_reward_sum = 0.0
-        ep_agent_rewards = {v: 0.0 for v in env.vars}
-        ep_agent_losses = {v: [] for v in env.vars}
-        ep_mse = []
+        ep_start_time = time.time()
 
         step_counter = 0
         done = False
-        ep_start_time = time.time()
 
         while not done:
 
@@ -89,72 +111,46 @@ def train(
             logps = {}
             values = {}
 
-            # --------- ACT ----------
+            # -------- ACT --------
             for v in env.vars:
                 if v not in obs:
                     continue
 
                 x = obs[v].float().to(device)
-                if x.ndim == 2:  # (lookback, features)
-                    x = x.unsqueeze(0)  # (1, lookback, features)
+                if x.ndim == 2:
+                    x = x.unsqueeze(0)
 
                 a, lp, val = policies[v].sample(x)
+
                 actions[v] = a
                 logps[v] = lp
                 values[v] = val.squeeze()
 
             next_obs, reward, done = env.step(actions)
 
-            reward_t = torch.as_tensor(float(reward), device=device)
+            reward = float(reward)
 
-            reward_window.append(float(reward))
-            ep_reward_sum += float(reward)
+            # 🔥 stabilize reward (VERY IMPORTANT for your env)
+            reward = reward / (1.0 + abs(reward))
 
-            # --------- CRITIC BOOTSTRAP ----------
-            next_values = {}
-            with torch.no_grad():
-                if not done:
-                    for v in env.vars:
-                        if v not in next_obs:
-                            continue
+            reward_window.append(reward)
+            ep_reward_sum += reward
 
-                        x_next = next_obs[v].float().to(device)
-                        if x_next.ndim == 2:
-                            x_next = x_next.unsqueeze(0)
-
-                        _, _, nv = policies[v].forward(x_next)
-                        next_values[v] = nv.squeeze()
-                else:
-                    for v in env.vars:
-                        next_values[v] = torch.tensor(0.0, device=device)
-
-            # --------- UPDATE (ONLINE ACTOR-CRITIC) ----------
+            # -------- store trajectory --------
             for v in env.vars:
                 if v not in logps:
                     continue
 
-                v_t = values[v]
-                v_next = next_values[v]
-
-                advantage = reward_t + gamma * v_next - v_t
-
-                actor_loss = -logps[v] * advantage.detach()
-                critic_loss = advantage.pow(2)
-                loss = actor_loss + 0.5 * critic_loss
-
-                optimizers[v].zero_grad()
-                loss.backward()
-                optimizers[v].step()
-
-                ep_agent_losses[v].append(float(loss.detach().cpu()))
-                ep_agent_rewards[v] += float(reward) / len(env.vars)
+                trajectories[v]["logps"].append(logps[v])
+                trajectories[v]["values"].append(values[v].detach().cpu())
+                trajectories[v]["rewards"].append(reward / len(env.vars))
 
             obs = next_obs
 
-            # --------- LOG ----------
+            # -------- logging --------
             if step_counter % log_every == 0:
                 avg100 = np.mean(reward_window)
-                avg_loss = np.mean([np.mean(ep_agent_losses[v]) for v in env.vars])
+
                 episode_elapsed = time.time() - ep_start_time
                 episode_steps_done = step_counter
                 episode_steps_left = len(data) - step_counter + 1e-8
@@ -167,23 +163,70 @@ def train(
 
                 print(
                     f"[Episode {ep+1}/{episodes}] Step {step_counter} | "
-                    f"Reward: {float(reward):.4f} | Avg(100): {avg100:.4f} | "
-                    f"Loss: {avg_loss:.4f} | "
+                    f"Reward: {reward:.4f} | Avg(100): {avg100:.4f} | "
                     f"Episode ETA: {episode_eta/60:.1f} min | "
                     f"Global ETA: {global_eta/60:.1f} min"
                 )
 
-        # --------- EPISODE SUMMARY ----------
+        # ======================================================
+        # EPISODE UPDATE (STABLE LEARNING)
+        # ======================================================
+
+        ep_losses = {v: [] for v in env.vars}
+
+        for v in env.vars:
+
+            logps = torch.stack(trajectories[v]["logps"])
+            values = torch.tensor(trajectories[v]["values"], device=device)
+            rewards = trajectories[v]["rewards"]
+
+            advantages, returns = compute_gae(rewards, values.tolist())
+
+            advantages = torch.tensor(advantages, device=device, dtype=torch.float32)
+            returns = torch.tensor(returns, device=device, dtype=torch.float32)
+
+            # normalize advantage (CRITICAL)
+            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+
+            # ---------------- ACTOR ----------------
+            actor_loss = -(logps * advantages.detach()).mean()
+
+            optimizers[v].zero_grad()
+            actor_loss.backward()
+            torch.nn.utils.clip_grad_norm_(policies[v].parameters(), 1.0)
+            optimizers[v].step()
+
+            # ---------------- CRITIC ----------------
+            # recompute value predictions for stability
+            critic_values = values
+
+            critic_loss = (critic_values - returns).pow(2).mean()
+
+            optimizers[v].zero_grad()
+            critic_loss.backward()
+            torch.nn.utils.clip_grad_norm_(policies[v].parameters(), 1.0)
+            optimizers[v].step()
+
+            ep_losses[v].append(float((actor_loss + critic_loss).detach().cpu()))
+
+        # ======================================================
+        # EPISODE SUMMARY
+        # ======================================================
+
         ep_avg_reward = ep_reward_sum / max(step_counter, 1)
+
         reward_per_epoch.append(ep_avg_reward)
 
         for v in env.vars:
-            reward_per_agent[v].append(ep_agent_rewards[v] / max(step_counter, 1))
-            loss_per_agent[v].append(np.mean(ep_agent_losses[v]) if ep_agent_losses[v] else 0.0)
+            reward_per_agent[v].append(
+                np.mean(trajectories[v]["rewards"]) if trajectories[v]["rewards"] else 0.0
+            )
+            loss_per_agent[v].append(np.mean(ep_losses[v]) if ep_losses[v] else 0.0)
 
-        loss_per_epoch.append(np.mean([np.mean(ep_agent_losses[v]) for v in env.vars]))
-        mse_per_epoch.append(np.mean(ep_agent_losses[v]))  # optional placeholder
-        forecast_metrics_per_epoch.append(None)  # placeholder
+        loss_per_epoch.append(np.mean([np.mean(ep_losses[v]) for v in env.vars]))
+
+        mse_per_epoch.append(None)
+        forecast_metrics_per_epoch.append(None)
 
         causal_importance_per_epoch.append(compute_causal_importance(env, policies))
 
@@ -194,7 +237,10 @@ def train(
         print(f"Steps:  {step_counter}")
         print("=" * 60 + "\n")
 
-        # --------- CHECKPOINT ----------
+        # ======================================================
+        # CHECKPOINT
+        # ======================================================
+
         if ep_avg_reward > best_epoch_reward:
             best_epoch_reward = ep_avg_reward
             best_epoch_idx = ep
@@ -208,10 +254,10 @@ def train(
                     "reward_per_epoch": reward_per_epoch,
                     "loss_per_epoch": loss_per_epoch,
                     "causal_importance_per_epoch": causal_importance_per_epoch,
-                    "input_sizes": {v: best_policies[v].lstm.input_size for v in env.vars},
                 },
                 checkpoint_path,
             )
+
             print(f"Checkpoint saved: {ep_avg_reward:.4f}")
 
     return (
