@@ -5,39 +5,40 @@ from torch.distributions import Normal
 
 class Policy(nn.Module):
     """
-    Shared LSTM encoder across all variables.
-    Each variable has its own heads (mu + value).
+    Fully vectorized multi-agent policy:
+    - 1 shared LSTM
+    - N agent-specific heads
+    - SCM-consistent observation handling
     """
 
-    def __init__(self, input_size, hidden=64):
+    def __init__(self, input_size, num_agents, hidden=64):
         super().__init__()
 
-        self.input_size = input_size
+        self.num_agents = num_agents
         self.hidden = hidden
 
-        # -------- SHARED ENCODER --------
+        # shared temporal encoder
         self.lstm = nn.LSTM(input_size, hidden, batch_first=True)
 
-        # -------- VARIABLE-SPECIFIC HEADS --------
-        # NOTE: These are now per-instance (still one Policy per variable,
-        # but they share structure via same LSTM weights across all vars)
-        self.mu = nn.Linear(hidden, 1)
-        self.value = nn.Linear(hidden, 1)
+        # agent-specific heads
+        self.mu = nn.Linear(hidden, num_agents)
+        self.value = nn.Linear(hidden, num_agents)
 
-        self.log_std = nn.Parameter(torch.zeros(1))
+        # per-agent volatility
+        self.log_std = nn.Parameter(torch.zeros(num_agents))
 
     def forward(self, x):
         """
-        x: (batch=1, time, features)
+        x: (1, L, N * F_max)
         """
 
         h, _ = self.lstm(x)
-        h = h[:, -1]  # last timestep
+        h = h[:, -1, :]  # (1, hidden)
 
-        mu = self.mu(h)
-        value = self.value(h)
+        mu = self.mu(h)        # (1, N)
+        value = self.value(h)  # (1, N)
 
-        std = torch.exp(self.log_std)
+        std = torch.exp(self.log_std).unsqueeze(0)  # (1, N)
 
         return mu, std, value
 
@@ -46,15 +47,7 @@ class Policy(nn.Module):
 
         dist = Normal(mu, std)
 
-        action = dist.rsample()
-        logp = dist.log_prob(action).sum()
-
-        return action, logp, value
-    def sample(self, x):
-        mu, std, value = self.forward(x)
-
-        dist = Normal(mu, std)
-        action = dist.rsample()
+        action = dist.rsample()      # (1, N)
         logp = dist.log_prob(action).sum()
 
         return action, logp, value
