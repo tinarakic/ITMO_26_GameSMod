@@ -107,13 +107,16 @@ def train(
             for v in env.vars:
                 if v not in obs:
                     continue
+
                 x = obs[v].float().to(device)
                 if x.ndim == 2:
                     x = x.unsqueeze(0)
-                a, lp, val = policies[v].sample(x)
+
+                with torch.no_grad():   # 🔥 CRITICAL FIX
+                    a, lp, val = policies[v].sample(x)
                 actions[v] = a
-                logps[v] = lp
-                values[v] = val.squeeze()
+                logps[v] = lp.detach()
+                values[v] = val.detach().squeeze()
 
             next_obs, reward, done = env.step(actions)
             reward = float(reward)
@@ -158,8 +161,8 @@ def train(
         ep_losses = {v: [] for v in env.vars}
 
         for v in env.vars:
-            logps_t = torch.stack(trajectories[v]["logps"])
-            values_t = torch.tensor(trajectories[v]["values"], device=device)
+            logps_t = torch.stack(trajectories[v]["logps"]).detach()
+            values_t = torch.tensor(trajectories[v]["values"], device=device).detach()
             rewards_t = trajectories[v]["rewards"]
 
             advantages, returns = compute_gae(rewards_t, values_t.tolist(), gamma=gamma)
