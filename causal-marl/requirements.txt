@@ -1,0 +1,10 @@
+matplotlib
+numpy
+pnadas
+sklearn
+torch 
+adjustText
+streamlit
+pyvis
+plotly
+
