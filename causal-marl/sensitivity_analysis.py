@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import os
 
 from scm_graph import load_scm_graph
 from train import train
@@ -57,11 +56,14 @@ for param in param_grid:
         policies,
         reward_per_epoch,
         reward_per_agent,
+        _,
         loss_per_epoch,
+        loss_per_agent,
+        _,
         best_epoch,
         mse_per_epoch,
         causal_scores,
-        forecast_metrics,
+        forecast_metrics_per_epoch,
         env
     ) = train(
         data=data,
@@ -74,7 +76,7 @@ for param in param_grid:
 
     results[param] = {
         "reward": reward_per_epoch,
-        "forecast_metrics": forecast_metrics
+        "forecast_metrics": forecast_metrics_per_epoch
     }
 
 
@@ -176,7 +178,6 @@ while True:
 
         metric = "mse" if choice == "2" else "mape"
 
-        # pick variable
         sample_param = list(results.keys())[0]
         vars_list = list(results[sample_param]["forecast_metrics"].keys())
 

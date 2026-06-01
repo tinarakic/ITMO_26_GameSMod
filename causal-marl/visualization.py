@@ -1,107 +1,101 @@
 import matplotlib.pyplot as plt
 import os
-import numpy as np
 
 
 def plot_training_metrics(
-    reward_per_epoch,
-    reward_per_agent=None,
-    loss_per_epoch=None,
-    loss_per_agent=None,
+    reward_total_per_epoch,
+    reward_avg_per_epoch,
+    loss_total_per_epoch,
+    loss_avg_per_epoch,
     save_dir="."
 ):
-    """
-    Correct visualization for:
-    - global reward (environment-level)
-    - per-agent loss (policy-level)
-    - safe aggregation without assuming alignment
-    """
 
-    epochs = np.arange(1, len(reward_per_epoch) + 1)
+    os.makedirs(save_dir, exist_ok=True)
 
-    # ======================================================
-    # REWARD (GLOBAL — NOT PER AGENT)
-    # ======================================================
-    fig1, ax1 = plt.subplots(figsize=(10, 5))
+    epochs = range(1, len(reward_total_per_epoch) + 1)
 
+    # ==================================================
+    # REWARD (dual axis)
+    # ==================================================
+    fig, ax1 = plt.subplots(figsize=(12, 6))
+
+    # Total reward (left axis)
     ax1.plot(
         epochs,
-        reward_per_epoch,
-        'o-',
-        label='Total Reward (Env-level)',
-        color='blue'
+        reward_total_per_epoch,
+        "b-o",
+        linewidth=2,
+        label="Total Reward"
     )
-
     ax1.set_xlabel("Epoch")
-    ax1.set_ylabel("Reward", color='blue')
-    ax1.tick_params(axis='y', labelcolor='blue')
-    ax1.grid(True, linestyle='--', alpha=0.5)
+    ax1.set_ylabel("Total Reward", color="blue")
+    ax1.tick_params(axis="y", labelcolor="blue")
+    ax1.grid(True, alpha=0.3)
 
-    # ---- show per-agent spread (NOT averaged line) ----
-    if reward_per_agent:
+    # Average reward (right axis)
+    ax2 = ax1.twinx()
+    ax2.plot(
+        epochs,
+        reward_avg_per_epoch,
+        "g--s",
+        linewidth=2,
+        label="Avg Reward"
+    )
+    ax2.set_ylabel("Average Reward", color="green")
+    ax2.tick_params(axis="y", labelcolor="green")
 
-        for i, (agent, values) in enumerate(reward_per_agent.items()):
+    # combined legend
+    lines_1, labels_1 = ax1.get_legend_handles_labels()
+    lines_2, labels_2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc="upper left")
 
-            # ensure alignment safety
-            values = values[:len(epochs)]
-
-            ax1.plot(
-                range(1, len(values) + 1),
-                values,
-                linestyle="--",
-                alpha=0.4,
-                label=f"{agent} (agent)"
-            )
-
-    ax1.legend(loc='upper left')
-    plt.title("Reward per Epoch (Global + Per-Agent View)")
+    plt.title("Reward per Epoch")
 
     reward_path = os.path.join(save_dir, "reward_per_epoch.png")
-    plt.savefig(reward_path, bbox_inches='tight')
-    plt.show()
+    plt.tight_layout()
+    plt.savefig(reward_path, dpi=300)
+    plt.close()
 
-    # ======================================================
-    # LOSS (TRUE PER-AGENT MEANINGFUL SIGNAL)
-    # ======================================================
-    if loss_per_epoch:
+    # ==================================================
+    # LOSS (dual axis)
+    # ==================================================
+    fig, ax3 = plt.subplots(figsize=(12, 6))
 
-        fig2, ax2 = plt.subplots(figsize=(10, 5))
+    # Total loss (left axis)
+    ax3.plot(
+        epochs,
+        loss_total_per_epoch,
+        "r-o",
+        linewidth=2,
+        label="Total Loss"
+    )
+    ax3.set_xlabel("Epoch")
+    ax3.set_ylabel("Total Loss", color="red")
+    ax3.tick_params(axis="y", labelcolor="red")
+    ax3.grid(True, alpha=0.3)
 
-        ax2.plot(
-            epochs,
-            loss_per_epoch,
-            'r^-',
-            label='Total Loss (mean across agents)'
-        )
+    # Average loss (right axis)
+    ax4 = ax3.twinx()
+    ax4.plot(
+        epochs,
+        loss_avg_per_epoch,
+        "m--s",
+        linewidth=2,
+        label="Avg Loss"
+    )
+    ax4.set_ylabel("Average Loss", color="magenta")
+    ax4.tick_params(axis="y", labelcolor="magenta")
 
-        ax2.set_xlabel("Epoch")
-        ax2.set_ylabel("Loss", color='red')
-        ax2.tick_params(axis='y', labelcolor='red')
-        ax2.grid(True, linestyle='--', alpha=0.5)
+    # combined legend
+    lines_1, labels_1 = ax3.get_legend_handles_labels()
+    lines_2, labels_2 = ax4.get_legend_handles_labels()
+    ax3.legend(lines_1 + lines_2, labels_1 + labels_2, loc="upper left")
 
-        # ---- per-agent loss curves (correct) ----
-        if loss_per_agent:
+    plt.title("Loss per Epoch")
 
-            for agent, values in loss_per_agent.items():
-
-                values = values[:len(epochs)]
-
-                ax2.plot(
-                    range(1, len(values) + 1),
-                    values,
-                    linestyle="--",
-                    alpha=0.5,
-                    label=f"{agent}"
-                )
-
-        ax2.legend(loc='upper right')
-        plt.title("Loss per Epoch (Total + Per-Agent)")
-
-        loss_path = os.path.join(save_dir, "loss_per_epoch.png")
-        plt.savefig(loss_path, bbox_inches='tight')
-        plt.show()
-
-    else:
-        loss_path = None
+    loss_path = os.path.join(save_dir, "loss_per_epoch.png")
+    plt.tight_layout()
+    plt.savefig(loss_path, dpi=300)
+    plt.close()
 
     return reward_path, loss_path

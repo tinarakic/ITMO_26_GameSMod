@@ -90,9 +90,16 @@ def train(
     # ----------------------------
     # METRICS
     # ----------------------------
-    reward_per_epoch = []
+    # Reward metrics
+    reward_total_per_epoch = []
+    reward_avg_per_epoch = []
+
+    # Loss metrics
+    loss_total_per_epoch = []
+    loss_avg_per_epoch = []
+
+    # Per-agent metrics
     reward_per_agent = {v: [] for v in env.vars}
-    loss_per_epoch = []
     loss_per_agent = {v: [] for v in env.vars}
 
     mse_per_epoch = []
@@ -149,11 +156,10 @@ def train(
 
                 actions[v] = a
 
-            next_obs, reward, done = env.step(actions)
-            reward = float(reward)
+            next_obs, rewards, done = env.step(actions)
 
-            ep_reward_sum += reward
-            reward_window.append(reward)
+            ep_reward_sum += sum(rewards.values())  # instead of np.mean(list(rewards.values()))
+
 
             # store trajectory
             for v in env.vars:
@@ -162,23 +168,21 @@ def train(
 
                 trajectories[v]["obs"].append(obs[v])
                 trajectories[v]["actions"].append(actions[v].cpu())
-                trajectories[v]["rewards"].append(reward)
+                trajectories[v]["rewards"].append(rewards[v])
 
             obs = next_obs
 
             if step_counter % log_every == 0:
-                avg100 = np.mean(reward_window)
 
                 eta = (time.time() - start_time) / max(global_step, 1) * (
                     total_steps - global_step
                 )
 
                 print(
-                    f"[EP {ep+1}/{episodes}] "
-                    f"step={step_counter} "
-                    f"reward={reward:.4f} "
-                    f"avg100={avg100:.4f} "
-                    f"eta={eta/60:.1f}min"
+                    f"[EP {ep+1}/{episodes}] | "
+                    f"STEP={step_counter} | "
+                    f"REWARD={ep_reward_sum:.4f} | "
+                    f"ETA={eta/60:.1f}min"
                 )
 
         # ======================================================
@@ -248,9 +252,21 @@ def train(
         # ======================================================
         # METRICS
         # ======================================================
-        ep_avg_reward = ep_reward_sum / max(step_counter, 1)
+        # ======================================================
+        # REWARD METRICS
+        # ======================================================
 
-        reward_per_epoch.append(ep_avg_reward)
+        # Total reward accumulated during the episode
+        epoch_total_reward = float(ep_reward_sum)
+
+        # Average reward per agent-decision
+        epoch_avg_reward = (
+            ep_reward_sum /
+            max(step_counter * len(env.vars), 1)
+        )
+
+        reward_total_per_epoch.append(epoch_total_reward)
+        reward_avg_per_epoch.append(epoch_avg_reward)
 
         # 🔥 RESTORED CAUSAL IMPORTANCE
         causal_scores.append(
@@ -265,28 +281,56 @@ def train(
                 np.mean(r) if len(r) > 0 else 0.0
             )
 
-            loss_per_agent[v].append(
-                np.mean(ep_losses[v]) if len(ep_losses[v]) > 0 else 0.0
-            )
-
+            
             if len(r) > 0:
                 arr = np.array(r, dtype=np.float32)
                 mse = float(np.mean(arr ** 2))
-                mape = float(np.mean(np.abs(arr) / (np.abs(arr) + 1e-8)) * 100)
+                true = arr[1:]
+                pred = arr[:-1]
+
+                if len(true) > 0:
+                    mape = float(np.mean(np.abs((true - pred) / (np.abs(true) + 1e-8))) * 100)
+                else:
+                    mape = 0.0
             else:
                 mse, mape = 0.0, 0.0
 
             forecast_metrics_per_epoch[v]["mse"].append(mse)
             forecast_metrics_per_epoch[v]["mape"].append(mape)
 
-        mse_per_epoch.append(ep_avg_reward ** 2)
+        mse_per_epoch.append(epoch_avg_reward ** 2)
+
+        # ======================================================
+        # EPOCH LOSS (CORRECT VERSION)
+        # ======================================================
+
+        valid_losses = []
+
+        for v in env.vars:
+            if len(ep_losses[v]) > 0:
+                valid_losses.append(np.mean(ep_losses[v]))
+
+        epoch_total_loss = (
+            float(np.sum(valid_losses))
+            if len(valid_losses) > 0
+            else 0.0
+        )
+
+        epoch_avg_loss = (
+            float(np.mean(valid_losses))
+            if len(valid_losses) > 0
+            else 0.0
+        )
+
+        loss_total_per_epoch.append(epoch_total_loss)
+        loss_avg_per_epoch.append(epoch_avg_loss)
 
         # ======================================================
         # CHECKPOINT
         # ======================================================
-        if ep_avg_reward > best_reward:
+        if epoch_avg_reward > best_reward:
 
-            best_reward = ep_avg_reward
+            best_reward = epoch_avg_reward
             best_epoch = ep
             best_policies = copy.deepcopy(policies)
 
@@ -302,9 +346,14 @@ def train(
                         for v in sample_obs.keys()
                     },
                     "best_epoch": best_epoch,
-                    "reward_per_epoch": reward_per_epoch,
+                    "reward_total_per_epoch": reward_total_per_epoch,
+                    "reward_avg_per_epoch": reward_avg_per_epoch,
+
                     "reward_per_agent": reward_per_agent,
-                    "loss_per_epoch": loss_per_epoch,
+
+                    "loss_total_per_epoch": loss_total_per_epoch,
+                    "loss_avg_per_epoch": loss_avg_per_epoch,
+
                     "loss_per_agent": loss_per_agent,
                     "causal_scores": causal_scores,
                     "forecast_metrics_per_epoch": forecast_metrics_per_epoch,
@@ -312,23 +361,31 @@ def train(
                 checkpoint_path,
             )
 
-            print(f"Checkpoint saved epoch={ep+1} reward={ep_avg_reward:.4f}")
+            print(f"Checkpoint saved epoch={ep+1} reward={epoch_avg_reward:.4f}")
 
         print("\n" + "=" * 60)
         print(f"EPOCH {ep+1}/{episodes}")
-        print(f"Reward: {ep_avg_reward:.4f}")
+        print(f"Reward: {epoch_avg_reward:.4f}")
         print(f"Steps:  {step_counter}")
         print("=" * 60 + "\n")
 
     return (
         policies,
-        reward_per_epoch,
+
+        reward_total_per_epoch,
+        reward_avg_per_epoch,
+
         reward_per_agent,
-        loss_per_epoch,
+
+        loss_total_per_epoch,
+        loss_avg_per_epoch,
+
         loss_per_agent,
+
         best_epoch,
         mse_per_epoch,
         causal_scores,
         forecast_metrics_per_epoch,
         env,
-    )
+)
+    

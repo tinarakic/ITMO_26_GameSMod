@@ -396,8 +396,8 @@ def predict_multi_step(env, policies, input_sizes, steps):
             if v not in obs:
                 continue
             x = to_tensor(obs[v], input_size=input_sizes[v])
-            mu, _ = policies[v].forward(x)
-            preds[v] = float(mu.detach().cpu().numpy().flatten()[0])
+            mu, _, _ = policies[v].forward(x)
+            preds[v] = mu.detach().cpu().reshape(-1)[0].item()
         history.append(preds)
         obs.update(preds)
     return pd.DataFrame(history)
