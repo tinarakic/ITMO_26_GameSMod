@@ -297,6 +297,10 @@ def train(
                         for v in env.vars
                         if v in best_policies
                     },
+                    "input_sizes": {
+                        v: sample_obs[v].shape[-1]
+                        for v in sample_obs.keys()
+                    },
                     "best_epoch": best_epoch,
                     "reward_per_epoch": reward_per_epoch,
                     "reward_per_agent": reward_per_agent,

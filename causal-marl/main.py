@@ -37,9 +37,9 @@ graph = graph.subgraph(valid_nodes).copy()
 # VISUALIZATION: TRAINING METRICS
 plot_training_metrics(
     reward_per_epoch=reward_per_epoch,
-    # reward_per_agent=reward_per_agent,
+    reward_per_agent=reward_per_agent,
     loss_per_epoch=loss_per_epoch,
-    # loss_per_agent=loss_per_agent,
+    loss_per_agent=loss_per_agent,
 )
 
 # CAUSAL IMPORTANCE 

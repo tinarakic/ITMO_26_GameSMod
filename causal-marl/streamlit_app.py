@@ -219,7 +219,12 @@ def load_model():
     policies = {}
     input_sizes = ckpt["input_sizes"]
     for v, state in ckpt["policies"].items():
-        model = Policy(input_sizes[v])
+        model = Policy(
+            input_size=input_sizes[v],
+            num_agents=1,
+            hidden=64,
+            horizon=1
+        )
         model.load_state_dict(state)
         model.eval()
         policies[v] = model
