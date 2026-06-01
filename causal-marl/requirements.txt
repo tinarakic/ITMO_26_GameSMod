@@ -1,10 +1,9 @@
 matplotlib
 numpy
-pnadas
-sklearn
-torch 
+pandas
+scikit-learn
+torch
 adjustText
 streamlit
 pyvis
 plotly
-
