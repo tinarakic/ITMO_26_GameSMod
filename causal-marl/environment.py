@@ -7,7 +7,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class CausalEnv:
 
     def __init__(self, data, graph, lookback=10):
-        self.raw_data = data.copy() 
+        self.raw_data = data.copy()
         self.data, self.scalers = normalize_data(
             data.select_dtypes(include=[np.number]).copy()
         )
@@ -23,6 +23,7 @@ class CausalEnv:
 
     def _obs(self):
         obs = {}
+
         for v in self.vars:
             if v not in self.data.columns:
                 continue
@@ -49,23 +50,31 @@ class CausalEnv:
             self_series = self.data[v].values[self.t - self.lookback:self.t]
             feats.append(self_series)
 
-            obs[v] = torch.tensor(np.stack(feats, axis=-1), dtype=torch.float32).unsqueeze(0)
+            obs[v] = torch.tensor(
+                np.stack(feats, axis=-1),
+                dtype=torch.float32
+            ).unsqueeze(0)
 
         return obs
 
     def step(self, actions):
-        reward = 0
+        reward = 0.0
+
         for v in self.vars:
             if v not in self.data.columns:
                 continue
 
-            true = torch.tensor(self.data[v].values[self.t], device=device)
-            pred = actions[v].detach().flatten()[0]  # tensor on GPU
+            true = torch.as_tensor(
+                self.data[v].values[self.t],
+                device=device
+            )
 
-            r = -abs(true - pred)
-            reward += r
+            pred = actions[v].detach().flatten()[0]
+
+            reward += -abs(true - pred)
 
         reward /= len(self.vars)
+
         self.t += 1
         done = self.t >= len(self.data) - 1
 

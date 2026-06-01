@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+from torch.distributions import Normal
+
 
 class Policy(nn.Module):
 
@@ -9,7 +11,10 @@ class Policy(nn.Module):
         self.input_size = input_size
 
         self.lstm = nn.LSTM(input_size, hidden, batch_first=True)
+
         self.mu = nn.Linear(hidden, 1)
+        self.value = nn.Linear(hidden, 1)
+
         self.log_std = nn.Parameter(torch.zeros(1))
 
     def forward(self, x):
@@ -17,14 +22,17 @@ class Policy(nn.Module):
         h = h[:, -1]
 
         mu = self.mu(h)
+        value = self.value(h)
+
         std = torch.exp(self.log_std)
 
-        return mu, std
+        return mu, std, value
 
     def sample(self, x):
-        mu, std = self.forward(x)
+        mu, std, value = self.forward(x)
 
-        action = mu + std * torch.randn_like(mu)
-        logp = -((action - mu) ** 2 / (2 * std ** 2 + 1e-8)).sum()
+        dist = Normal(mu, std)
+        action = dist.rsample()
+        logp = dist.log_prob(action).sum()
 
-        return action, logp
+        return action, logp, value
