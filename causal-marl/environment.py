@@ -9,6 +9,7 @@ class CausalEnv:
 
     def __init__(self, data, graph, lookback=10, horizon=1):
         self.raw_data = data.copy()
+
         self.data, self.scalers = normalize_data(
             data.select_dtypes(include=[np.number]).copy()
         )
@@ -20,10 +21,16 @@ class CausalEnv:
         self.vars = list(graph.nodes())
         self.t = lookback
 
+    # ======================================================
+    # RESET
+    # ======================================================
     def reset(self):
         self.t = self.lookback
         return self._obs()
 
+    # ======================================================
+    # OBSERVATION
+    # ======================================================
     def _obs(self):
         obs = {}
 
@@ -50,6 +57,7 @@ class CausalEnv:
 
                 feats.append(x)
 
+            # include self-history
             self_series = self.data[v].values[self.t - self.lookback:self.t]
             feats.append(self_series)
 
@@ -60,32 +68,47 @@ class CausalEnv:
 
         return obs
 
+    # ======================================================
+    # STEP (FIXED: PER-AGENT REWARDS)
+    # ======================================================
     def step(self, actions):
-        reward = 0.0
 
         eps = 1e-8
 
+        rewards = {}
+
+        # ==================================================
+        # compute per-variable rewards
+        # ==================================================
         for v in self.vars:
+
             if v not in self.data.columns:
+                continue
+
+            if v not in actions:
                 continue
 
             pred = actions[v].detach().squeeze()  # (H,)
             true = self.data[v].values[self.t:self.t + self.H]
 
             if len(true) < self.H:
-                break
+                continue
 
             true = torch.tensor(true, dtype=torch.float32)
 
+            # normalized error
             mape = torch.mean(
                 torch.abs((true - pred.cpu()) / (true + eps))
             )
 
-            reward += -mape.item()
+            # reward per agent (negative error)
+            rewards[v] = -mape.item()
 
-        reward /= len(self.vars)
+        # ==================================================
+        # IMPORTANT: no averaging anymore
+        # ==================================================
 
         self.t += 1
         done = self.t >= len(self.data) - self.H - 1
 
-        return self._obs(), reward, done
+        return self._obs(), rewards, done
