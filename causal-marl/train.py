@@ -87,7 +87,14 @@ def train(
     loss_per_agent = {v: [] for v in env.vars}
     mse_per_epoch = []
     causal_scores = []
-    forecast_error = []
+
+    forecast_metrics_per_epoch = {
+        v: {
+            "mse": [],
+            "mape": []
+        }
+        for v in env.vars
+    }
 
     best_epoch_reward = -np.inf
     best_policies = None
@@ -286,21 +293,61 @@ def train(
                 np.mean(ep_losses[v]) if ep_losses[v] else 0.0
             )
 
+        valid_losses = [
+            np.mean(ep_losses[v])
+            for v in env.vars
+            if len(ep_losses[v]) > 0
+        ]
+
         loss_per_epoch.append(
-            np.mean([np.mean(ep_losses[v]) for v in env.vars])
+            float(np.mean(valid_losses))
+            if len(valid_losses) > 0
+            else 0.0
         )
 
-        mse_per_epoch.append(ep_avg_reward**2)
+        mse_per_epoch.append(ep_avg_reward ** 2)
 
-        forecast_error.append(
-            {
-                v: {
-                    "mse": ep_avg_reward**2,
-                    "mape": ep_avg_reward,
-                }
-                for v in env.vars
-            }
-        )
+        for v in env.vars:
+
+            rewards = trajectories[v]["rewards"]
+
+            if len(rewards) == 0:
+
+                mse = 0.0
+                mape = 0.0
+
+            else:
+
+                rewards_arr = np.asarray(
+                    rewards,
+                    dtype=np.float32,
+                )
+
+                mse = float(
+                    np.mean(
+                        np.square(rewards_arr)
+                    )
+                )
+
+                denom = np.maximum(
+                    np.abs(rewards_arr),
+                    1e-8,
+                )
+
+                mape = float(
+                    np.mean(
+                        np.abs(rewards_arr)
+                        / denom
+                    ) * 100.0
+                )
+
+            forecast_metrics_per_epoch[v]["mse"].append(
+                mse
+            )
+
+            forecast_metrics_per_epoch[v]["mape"].append(
+                mape
+            )
 
         # checkpoint
         if ep_avg_reward > best_epoch_reward:
@@ -318,9 +365,12 @@ def train(
                     "graph": env.graph,
                     "best_epoch": best_epoch,
                     "reward_per_epoch": reward_per_epoch,
+                    "reward_per_agent": reward_per_agent,
                     "loss_per_epoch": loss_per_epoch,
+                    "loss_per_agent": loss_per_agent,
                     "causal_scores": causal_scores,
-                    "forecast_error": forecast_error,
+                    "forecast_metrics_per_epoch":
+                        forecast_metrics_per_epoch,
                 },
                 checkpoint_path,
             )
@@ -346,6 +396,6 @@ def train(
         best_epoch,
         mse_per_epoch,
         causal_scores,
-        forecast_error,
+        forecast_metrics_per_epoch,
         env,
     )
