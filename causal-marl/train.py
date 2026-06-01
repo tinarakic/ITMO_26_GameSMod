@@ -90,11 +90,10 @@ def train(
             # -------------------------
             # VECTORIZED OBS
             # -------------------------
-            obs_tensor = torch.cat(
-                [obs[v] for v in env.vars],
-                dim=-1
-            ).unsqueeze(0).to(device)
-
+            # each obs[v] shape: (lookback, features_v)
+            obs_tensor = torch.cat([obs[v] for v in env.vars], dim=-1)  # (lookback, total_features)
+            obs_tensor = obs_tensor.unsqueeze(0).float().to(device)     # (1, lookback, total_features) batch_first=True
+                        
             # -------------------------
             # FORWARD PASS
             # -------------------------
