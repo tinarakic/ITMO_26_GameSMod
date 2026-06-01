@@ -172,38 +172,38 @@ def train(
 
             obs = next_obs
 
+            now = time.time()
+    
             if step_counter % log_every == 0:
                 now = time.time()
-                elapsed_total = now - start_time
-
+                
                 # ----------------------------
                 # GLOBAL ETA (TOTAL TRAINING)
                 # ----------------------------
-                global_frac = global_step / max(total_steps, 1)
-                global_frac = max(global_frac, 1e-8)
-
-                eta_total = elapsed_total * (1 - global_frac) / global_frac
+                elapsed_total = now - start_time
+                global_frac_done = global_step / max(total_steps, 1)
+                global_frac_done = min(max(global_frac_done, 1e-8), 1.0)  # clamp to avoid div0
+                eta_total = elapsed_total * (1 - global_frac_done) / global_frac_done
 
                 # ----------------------------
-                # EPOCH ETA (CURRENT EPISODE ONLY)
+                # EPOCH ETA (CURRENT EPISODE)
                 # ----------------------------
-                # estimate time per step from global history
-                time_per_step = elapsed_total / max(global_step, 1)
-
-                remaining_epoch_steps = max(len(data) - step_counter, 0)
-                eta_epoch = time_per_step * remaining_epoch_steps
+                # fraction of steps done in this epoch
+                epoch_frac_done = step_counter / max(len(data), 1)
+                epoch_frac_done = min(max(epoch_frac_done, 1e-8), 1.0)
+                eta_epoch = elapsed_total * (1 - epoch_frac_done) / epoch_frac_done / episodes
 
                 # ----------------------------
                 # PRINT
                 # ----------------------------
                 print(
                     f"[EP {ep+1}/{episodes}] | "
-                    f"STEP={step_counter} | "
+                    f"STEP={step_counter}/{len(data)} | "
+                    f"GLOBAL_STEP={global_step}/{total_steps} | "
                     f"REWARD={ep_reward_sum:.4f} | "
                     f"ETA_EPOCH={eta_epoch/60:.1f}min | "
                     f"ETA_TOTAL={eta_total/60:.1f}min"
                 )
-
         # ======================================================
         # UPDATE
         # ======================================================
