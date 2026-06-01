@@ -186,23 +186,13 @@ def train(
                 eta_total = elapsed_total * (1 - global_frac_done) / global_frac_done
 
                 # ----------------------------
-                # EPOCH ETA (CURRENT EPISODE)
-                # ----------------------------
-                # fraction of steps done in this epoch
-                epoch_frac_done = step_counter / max(len(data), 1)
-                epoch_frac_done = min(max(epoch_frac_done, 1e-8), 1.0)
-                eta_epoch = elapsed_total * (1 - epoch_frac_done) / epoch_frac_done / episodes
-
-                # ----------------------------
                 # PRINT
                 # ----------------------------
                 print(
                     f"[EP {ep+1}/{episodes}] | "
                     f"STEP={step_counter}/{len(data)} | "
-                    f"GLOBAL_STEP={global_step}/{total_steps} | "
                     f"REWARD={ep_reward_sum:.4f} | "
-                    f"ETA_EPOCH={eta_epoch/60:.1f}min | "
-                    f"ETA_TOTAL={eta_total/60:.1f}min"
+                    f"ETA={eta_total/60:.1f}min"
                 )
         # ======================================================
         # UPDATE
