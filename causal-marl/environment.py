@@ -79,9 +79,9 @@ class CausalEnv:
             if len(true) < self.H:
                 continue
 
-            # Convert to torch tensor (normalized values)
-            true = torch.tensor(true, dtype=torch.float32)
-            pred = pred.float()
+            # Convert to torch tensor on the same device as pred
+            true = torch.tensor(true, dtype=torch.float32, device=pred.device)
+            pred = pred.float().to(pred.device)
 
             # MAE reward on normalized values
             mae = torch.mean(torch.abs(true - pred))
