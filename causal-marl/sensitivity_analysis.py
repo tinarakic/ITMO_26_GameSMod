@@ -17,7 +17,7 @@ MODE = "gamma"   # "gamma" or "lookback"
 GAMMAS = [0.90, 0.95, 0.98]
 LOOKBACKS = [5, 10, 20]
 
-EPISODES = 3
+EPISODES = 30
 
 
 # =========================================================
@@ -47,9 +47,9 @@ for param in param_grid:
 
     if MODE == "gamma":
         gamma = param
-        lookback = 10
+        lookback = 48
     else:
-        gamma = 0.99
+        gamma = 0.98
         lookback = param
 
     (
@@ -71,7 +71,7 @@ for param in param_grid:
         episodes=EPISODES,
         gamma=gamma,
         lookback=lookback,
-        log_every=50
+        log_every=100
     )
 
     results[param] = {
