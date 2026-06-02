@@ -14,7 +14,7 @@ SCM_PATH = "scm.csv"
 
 MODE = "gamma"   # "gamma" or "lookback"
 
-GAMMAS = [0.90, 0.95, 0.99]
+GAMMAS = [0.90, 0.95, 0.98]
 LOOKBACKS = [5, 10, 20]
 
 EPISODES = 3
