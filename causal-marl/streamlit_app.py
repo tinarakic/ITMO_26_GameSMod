@@ -13,17 +13,13 @@ from data_utils import denormalize, normalize_data
 from causal import causal_importance
 
 
-# =========================================================
 # CONFIG
-# =========================================================
 CHECKPOINT_PATH = "best_epoch.pth"
 DATA_PATH = "data.csv"
 SCM_PATH = "scm.csv"
 
 
-# =========================================================
 # PAGE CONFIG
-# =========================================================
 st.set_page_config(
     page_title="Crypto Forecast",
     layout="wide",
@@ -31,9 +27,7 @@ st.set_page_config(
 )
 
 
-# =========================================================
-# NAVY DARK SAAS THEME (NO LIGHT, NO BUNDLE/SNAKEY LABELS)
-# =========================================================
+# THEME
 st.markdown("""
 <style>
 header {
@@ -41,16 +35,16 @@ header {
 }
             
 :root {
-    --bg: #0a0f1a;           /* slightly lighter navy for warmth */
-    --bg-2: #1a1128;         /* warm dark gradient overlay */
-    --card: rgba(20, 15, 40, 0.85);
-    --card-2: rgba(30, 20, 50, 0.90);
-    --line: rgba(255, 122, 122, 0.25);  /* coral-ish lines */
-    --text: #fefefe;         /* bright white text */
-    --muted: #f0c0c0;        /* warm muted text */
-    --accent: #ff7a7a;       /* coral accent buttons */
-    --accent-2: #f6a5c0;
-    --accent-3: #fbc2a3;
+    --bg: #050b14;
+    --bg-2: #07111f;
+    --card: rgba(8, 18, 34, 0.92);
+    --card-2: rgba(13, 25, 45, 0.96);
+    --line: rgba(96, 165, 250, 0.18);
+    --text: #e5eefc;
+    --muted: #8aa3c7;
+    --accent: #3b82f6;
+    --accent-2: #60a5fa;
+    --accent-3: #2563eb;
     --success: #22c55e;
     --warning: #f59e0b;
     --danger: #ef4444;
@@ -58,13 +52,13 @@ header {
 }
 
 html, body, [class*="css"] {
-    background: radial-gradient(circle at top, #0f1d35 0%, var(--bg) 50%, #120918 100%);
+    background: radial-gradient(circle at top, #0f1d35 0%, var(--bg) 42%, #03070e 100%);
     color: var(--text);
     font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .stApp {
-    background: radial-gradient(circle at top, #0f1d35 0%, var(--bg) 50%, #120918 100%);
+    background: radial-gradient(circle at top, #0f1d35 0%, var(--bg) 42%, #03070e 100%);
     color: var(--text);
 }
 
@@ -72,22 +66,7 @@ html, body, [class*="css"] {
     padding: 1.6rem 2rem 2rem !important;
 }
 
-h1 {
-    font-weight: 900;
-    letter-spacing: -0.04em;
-
-    /* gradient text */
-    background: linear-gradient(135deg, #ff7a7a, #f6a5c0, #fbc2a3);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-
-    /* fallback */
-    color: #ff7a7a;
-
-    text-shadow: 0 10px 30px rgba(255, 122, 122, 0.15);
-}
-                       
-h2, h3, h4, h5, h6, p, span, label, div {
+h1, h2, h3, h4, h5, h6, p, span, label, div {
     color: var(--text);
 }
 
@@ -101,19 +80,32 @@ h2 {
     letter-spacing: -0.02em;
 }
 
+section[data-testid="stVerticalBlock"],
+.st-emotion-cache-1r6slb0,
+.st-emotion-cache-13ln4jf {
+    background: #050b14 !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+            
+div[data-testid="stHeader"], #MainMenu, footer {
+    visibility: hidden;
+}
+
 .stButton > button {
     background: linear-gradient(135deg, var(--accent), var(--accent-3));
     color: white;
-    border: 1px solid rgba(255,122,122,0.4);
+    border: 1px solid rgba(96, 165, 250, 0.35);
     border-radius: 14px;
     padding: 0.65rem 1.1rem;
     font-weight: 700;
-    box-shadow: 0 10px 24px rgba(255,122,122,0.32);
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.32);
 }
 
 .stButton > button:hover {
-    background: linear-gradient(135deg, var(--accent-2), var(--accent-3));
-    border-color: rgba(246,165,192,0.6);
+    background: linear-gradient(135deg, #60a5fa, #1d4ed8);
+    border-color: rgba(147, 197, 253, 0.6);
 }
 
 /* Remove NumberInput borders completely */
@@ -131,26 +123,38 @@ h2 {
     background: rgba(38, 39, 48, 0.95) !important;
 }
 
+/* Remove internal top/bottom lines */
+[data-testid="stNumberInput"] input {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
 [data-baseweb="tag"] {
-    background: rgba(255,122,122,0.18) !important;
-    color: #fefefe !important;
+    background: rgba(37, 99, 235, 0.18) !important;
+    color: #dbeafe !important;
     border-radius: 999px !important;
+}
+
+[data-testid="stMultiselect"] div[role="button"] {
+    background: rgba(6, 13, 25, 0.92) !important;
 }
 
 [data-testid="stDataFrame"] {
     border-radius: 16px;
     overflow: hidden;
-    border: 1px solid rgba(255,122,122,0.15);
+    border: 1px solid rgba(96, 165, 250, 0.15);
 }
 
 [data-testid="stDataFrame"] [role="grid"] {
-    background: rgba(30, 20, 50, 0.95);
+    background: rgba(7, 17, 31, 0.96);
     color: var(--text);
 }
 
 [data-testid="stMetric"] {
-    background: linear-gradient(180deg, rgba(30,20,50,0.95), rgba(20,15,40,0.92));
-    border: 1px solid rgba(255,122,122,0.15);
+    background: linear-gradient(180deg, rgba(13, 25, 45, 0.96), rgba(6, 13, 25, 0.96));
+    border: 1px solid rgba(96, 165, 250, 0.15);
     border-radius: 16px;
     padding: 1rem;
     box-shadow: var(--shadow);
@@ -161,42 +165,38 @@ h2 {
 }
 
 hr {
-    border-color: rgba(255,122,122,0.18);
+    border-color: rgba(96, 165, 250, 0.18);
 }
 
-/* Plotly container */
+/* Plotly container: navy dark background, no white bubbles */
 div.plotly-container {
     background: transparent !important;
+    color: var(--text) !important;
+}
+
+/* Sankey node labels: no extra bundle/sneaky label boxes */
+.jn-tn, .jn-as, .jn-bo {
     color: var(--text) !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
 
-# =========================================================
-# DATA + NORMALIZATION
-# =========================================================
+# LOAD DATA + NORMALIZATION
 raw_data = pd.read_csv(DATA_PATH)
 
 numeric_data = raw_data.select_dtypes(include=[np.number])
 data_norm, scalers = normalize_data(numeric_data)
 valid_nodes = list(data_norm.columns)
 
-
-# =========================================================
-# LOAD SCM GRAPH + DIRECTED EDGES
-# =========================================================
+# LOAD SCM GRAPH 
 graph = load_scm_graph(SCM_PATH, valid_nodes)
 graph = graph.subgraph(valid_nodes).copy()
-
 
 scm_df = pd.read_csv(SCM_PATH)
 directed_edges = scm_df[scm_df["Link type i --- j"] == "-->"].copy()
 
-
-# =========================================================
 # LOAD MODEL
-# =========================================================
 @st.cache_resource
 def load_model():
     ckpt = torch.load(CHECKPOINT_PATH, map_location="cpu", weights_only=False)
@@ -217,37 +217,14 @@ def load_model():
 
 policies, input_sizes = load_model()
 
-
-# =========================================================
 # ENVIRONMENT
-# =========================================================
 env = CausalEnv(data_norm, graph)
 
-
-# =========================================================
 # HEADER
-# =========================================================
-st.markdown("""
-<div style="display:flex; align-items:center; gap:10px;">
-    <div style="font-size:38px;">🔮</div>
-    <div style="
-        font-size:38px;
-        font-weight:800;
-        background: linear-gradient(135deg, #ff7a7a, #f6a5c0, #fbc2a3);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        letter-spacing: -0.03em;
-    ">
-        Causal-based MARL Cryptocurrency Forecasting Dashboard
-    </div>
-</div>
-""", unsafe_allow_html=True)
+st.title("Causal-based MARL Cryptocurrency Forecasting Dashboard")
 st.caption("Interactive dashboard for SCM-based forecasting, displaying structural relationships, predicted trajectories, and causal contribution flows between variables.")
 
-
-# =========================================================
 # SCM VISUALIZATION
-# =========================================================
 st.subheader("Structura Causal Model")
 net = Network(
     height="550px",
@@ -257,7 +234,6 @@ net = Network(
     directed=True
 )
 net.barnes_hut()
-
 
 for n in graph.nodes:
     if "whale" in n:
@@ -294,14 +270,11 @@ net.set_options("""
 }
 """)
 
-# 1. Save the graph to disk as usual
 net.save_graph("scm_graph.html")
 
-# 2. Read the file and strip/overwrite the internal white container properties
 with open("scm_graph.html", "r", encoding="utf-8") as f:
     html = f.read()
 
-# Force Pyvis generated template body and wrapper divs to use your exact dashboard background
 html = html.replace("background-color: #ffffff;", "background-color: #050b14 !important;")
 html = html.replace("background-color:ffffff;", "background-color: #050b14 !important;")
 html = html.replace("body {", "body { background-color: #050b14 !important; color: #050b14 !important; border: none !important; ")
@@ -342,9 +315,8 @@ div.vis-network canvas {
 </style>
 """
 html = html.replace("</head>", f"{css_patch}</head>")
-# ---------------------------------------------------------
+
 # GRAPH CONTAINER WITH BOTTOM BORDER
-# ---------------------------------------------------------
 st.markdown("""
 <style>
 .graph-divider {
@@ -355,27 +327,30 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Render graph
 components.html(html, height=550, scrolling=False)
 
-# Full-width divider below graph
 st.markdown(
     '<div class="graph-divider"></div>',
     unsafe_allow_html=True
 )
 
-# =========================================================
 # FORECAST SETTINGS
-# =========================================================
 st.subheader("Forecast Settings")
 steps_ahead = st.number_input("Steps ahead", min_value=1, max_value=20, value=1)
 selected_vars = st.multiselect("Choose variables to forecast", list(graph.nodes), default=[list(graph.nodes)[0]])
 
-
-# =========================================================
 # FORECAST HELPERS
-# =========================================================
 def to_tensor(obs_v, input_size):
+    '''
+    Преобразует вектор наблюдений в тензор PyTorch фиксированного размера.
+
+    Args:
+        obs_v (list[float] | numpy.ndarray): Входной вектор истории переменной.
+        input_size (int): Требуемый фиксированный размер контекста для модели.
+
+    Returns:
+        torch.Tensor: Трехмерный тензор типа float32.
+    '''
     x = np.array(obs_v, dtype=np.float32).flatten()
     if x.size < input_size:
         x = np.pad(x, (input_size - x.size, 0), "constant")
@@ -386,6 +361,24 @@ def to_tensor(obs_v, input_size):
 
 
 def predict_multi_step(env, policies, input_sizes, steps):
+    '''
+    Выполняет многошаговый авторегрессионный прогноз для всех переменных среды.
+
+    Алгоритм:
+    1. Сбрасывает состояние среды для получения начального контекста.
+    2. Итерирует по шагам прогнозирования вперед.
+    3. Формирует тензоры истории и прогоняет их через соответствующие политики.
+    4. Записывает предсказания в историю и обновляет ими текущий контекст среды.
+
+    Args:
+        env (object): Объект среды авторегрессионного симулирования.
+        policies (dict[str, torch.nn.Module]): Словарь нейросетевых моделей для каждой переменной.
+        input_sizes (dict[str, int]): Словарь размеров входных окон для каждой переменной.
+        steps (int): Количество шагов прогноза в будущее.
+
+    Returns:
+        pandas.DataFrame: Таблица с хронологией предсказанных значений по всем переменным.
+    '''
     obs = env.reset()
     history = []
     for _ in range(steps):
@@ -401,12 +394,17 @@ def predict_multi_step(env, policies, input_sizes, steps):
     return pd.DataFrame(history)
 
 
-# =========================================================
 # CAUSAL SANKEY
-# =========================================================
-
-
 def get_var_color(var):
+    '''
+    Возвращает HEX-код цвета в зависимости от категории переменной.
+
+    Args:
+        var (str): Имя переменной (криптовалюта, сентимент, биржа и т.д.).
+
+    Returns:
+        str: Строка с HEX-кодом цвета.
+    '''
     v = var.lower()
     if "whale" in v:
         return "#facc15"
@@ -426,6 +424,16 @@ def get_var_color(var):
 
 
 def hex_to_rgba(hex_color, alpha=0.75):
+    '''
+    Конвертирует HEX-цвет в строковый формат RGBA с заданной прозрачностью.
+
+    Args:
+        hex_color (str): Строка HEX-кода (например, '#ffffff').
+        alpha (float, optional): Коэффициент прозрачности (0.0–1.0). Defaults to 0.75.
+
+    Returns:
+        str: Строка в формате 'rgba(r,g,b,alpha)'.
+    '''
     hex_color = hex_color.lstrip("#")
     r = int(hex_color[0:2], 16)
     g = int(hex_color[2:4], 16)
@@ -434,6 +442,15 @@ def hex_to_rgba(hex_color, alpha=0.75):
 
 
 def pretty_label(name):
+    '''
+    Форматирует техническое имя переменной в читаемую подпись для графика.
+
+    Args:
+        name (str): Исходное системное имя переменной.
+
+    Returns:
+        str: Отформатированная подпись (валидный HTML/Text для Plotly).
+    '''
     text = name.replace("_", " ")
     words = text.split()
     if len(words) > 4:
@@ -443,6 +460,24 @@ def pretty_label(name):
 
 
 def build_causal_sankey(selected_vars, scm_edges):
+    '''
+    Строит интерактивную диаграмму Санкей для визуализации весов причинно-следственных связей.
+
+    Алгоритм:
+    1. Динамически индексирует уникальные переменные-узлы.
+    2. Фильтрует связи и рассчитывает процентный вклад каждого родителя (% от общего влияния).
+    3. Формирует массивы источников, целей, весов и кастомных текстов подсказок (hover).
+    4. Раскрашивает узлы по категориям, выделяя выбранные целевые переменные базовым цветом.
+    5. Настраивает темный стиль графика (layout) для рендеринга.
+
+    Args:
+        selected_vars (list[str]): Список целевых зависимых переменных.
+        scm_edges (pandas.DataFrame): Датафрейм ребер причинно-следственной модели (SCM) 
+            с колонками ['Variable i', 'Variable j', 'Link value'].
+
+    Returns:
+        plotly.graph_objects.Figure: Интерактивный объект диаграммы Plotly.
+    '''
     labels = []
     node_map = {}
 
@@ -524,10 +559,26 @@ def build_causal_sankey(selected_vars, scm_edges):
 
     return fig
 
-# =========================================================
 # OUTGOING INFLUENCE SANKEY
-# =========================================================
 def build_downstream_sankey(selected_vars, scm_edges):
+    '''
+    Строит диаграмму Sankey для визуализации силы исходящего влияния (downstream) переменных.
+
+    Алгоритм:
+    1. Итерирует по списку выбранных родительских переменных.
+    2. Фильтрует и сортирует по убыванию все дочерние связи для каждого родителя.
+    3. Рассчитывает долю влияния каждого ребра в процентах от суммарного исходящего веса.
+    4. Формирует массивы индексов, процентных весов, цветов и HTML-подсказок (hover).
+    5. Генерирует интерактивную фигуру Plotly с фиксированной темной стилизацией холста.
+
+    Args:
+        selected_vars (list[str]): Список исходных (влияющих) переменных для анализа.
+        scm_edges (pandas.DataFrame): Датафрейм ребер структурной причинно-следственной модели 
+            с колонками ['Variable i', 'Variable j', 'Link value'].
+
+    Returns:
+        plotly.graph_objects.Figure: Интерактивный объект диаграммы Plotly.
+    '''
     labels = []
     node_map = {}
 
@@ -637,9 +688,7 @@ def build_downstream_sankey(selected_vars, scm_edges):
 
     return fig
 
-# =========================================================
 # RUN FORECAST
-# =========================================================
 if st.button("Run Forecast"):
     df_norm_forecast = predict_multi_step(env, policies, input_sizes, steps_ahead)
 
@@ -647,9 +696,8 @@ if st.button("Run Forecast"):
     for col in df_norm_forecast.columns:
         df[col] = denormalize(torch.tensor(df_norm_forecast[col].values), scalers[col])
     
-    # --- DATETIME INDEX ---
     last_date = pd.to_datetime(raw_data['datetime'].max())
-    forecast_dates = pd.date_range(start=last_date + pd.Timedelta(hours=1), periods=steps_ahead, freq='h')
+    forecast_dates = pd.date_range(start=last_date + pd.Timedelta(hours=1), periods=steps_ahead, freq='H')
     df.index = forecast_dates
 
     st.subheader("Forecast Output")
@@ -692,9 +740,7 @@ if st.button("Run Forecast"):
             )
             st.plotly_chart(fig, use_container_width=True)
 
-            # =========================================================
             # INCOMING CAUSAL CONTRIBUTIONS
-            # =========================================================
             st.subheader("Causal Contribution Flow")
 
             sankey_fig = build_causal_sankey(
@@ -708,9 +754,7 @@ if st.button("Run Forecast"):
             )
 
 
-            # =========================================================
             # OUTGOING INFLUENCE FLOW
-            # =========================================================
             st.subheader("Causal Impact Flow")
 
             downstream_fig = build_downstream_sankey(
@@ -724,9 +768,7 @@ if st.button("Run Forecast"):
             )
 
 
-            # =========================================================
             # IMPACT TABLE
-            # =========================================================
             st.subheader("Causal Impact Table")
 
             outgoing = directed_edges[
@@ -773,10 +815,25 @@ if st.button("Run Forecast"):
                     "No downstream causal effects found for the selected variables."
                 )
 
-# =========================================================
 # CAUSAL IMPORTANCE GRAPH (NETWORK VISUALIZATION)
-# =========================================================
 def build_causal_importance_graph(scores):
+    '''
+    Строит интерактивный сетевой граф причинно-следственной важности и возвращает его HTML-код.
+
+    Алгоритм:
+        1. Инициализирует направленный граф PyVis с темной темой и физикой Barnes-Hut.
+        2. Собирает уникальные узлы из ключей словаря `scores` и регистрирует их в графе.
+        3. Нормализует веса связей и добавляет ребра, масштабируя их толщину (width) по силе влияния.
+        4. Задает параметры сглаживания ребер и интерактивного hover через JSON-опции.
+        5. Сохраняет граф во временный файл, внедряет CSS-патч для бесшовного темного фона и возвращает HTML.
+
+    Args:
+        scores (dict[tuple[str, str], float | torch.Tensor]): Словарь, где ключ — кортеж 
+            (родитель, потомок), а значение — численная оценка важности связи.
+
+    Returns:
+        str: Полный HTML-код страницы с интерактивной визуализацией графа.
+    '''
     net = Network(
         height="600px",
         width="100%",
@@ -787,18 +844,12 @@ def build_causal_importance_graph(scores):
 
     net.barnes_hut()
 
-    # -------------------------
-    # 1. COLLECT ALL NODES FIRST
-    # -------------------------
     nodes = set()
 
     for (p, t), score in scores.items():
         nodes.add(p)
         nodes.add(t)
 
-    # -------------------------
-    # 2. ADD NODES FIRST (IMPORTANT!)
-    # -------------------------
     for n in nodes:
         net.add_node(
             n,
@@ -808,9 +859,6 @@ def build_causal_importance_graph(scores):
             font={"size": 14, "color": "#e5eefc"}
         )
 
-    # -------------------------
-    # 3. ADD EDGES AFTER NODES
-    # -------------------------
     max_score = max(scores.values()) if len(scores) > 0 else 1.0
 
     for (p, t), score in scores.items():
@@ -865,9 +913,7 @@ def build_causal_importance_graph(scores):
 
     return html
 
-# =========================================================
 # CAUSAL IMPORTANCE GRAPH VISUALIZATION
-# =========================================================
 st.subheader("Causal Importance Graph")
 
 if st.button("Run Causal Importance Graph"):
@@ -876,10 +922,6 @@ if st.button("Run Causal Importance Graph"):
 
     graph_html = build_causal_importance_graph(scores)
 
-    #components.html(graph_html, height=600, scrolling=False)
-    # ---------------------------------------------------------
-    # GRAPH CONTAINER WITH BOTTOM BORDER
-    # ---------------------------------------------------------
     st.markdown("""
     <style>
     .graph-divider {
@@ -890,10 +932,8 @@ if st.button("Run Causal Importance Graph"):
     </style>
     """, unsafe_allow_html=True)
 
-    # Render graph
     components.html(graph_html, height=550, scrolling=False)
 
-    # Full-width divider below graph
     st.markdown(
         '<div class="graph-divider"></div>',
         unsafe_allow_html=True

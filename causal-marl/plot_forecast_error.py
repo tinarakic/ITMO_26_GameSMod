@@ -6,6 +6,12 @@ CHECKPOINT = "best_epoch.pth"
 
 
 def load_metrics():
+    """
+    Загружает ошибки прогноза из checkpoint-файла.
+
+    Returns:
+        dict: словарь метрик прогнозирования по эпохам для каждой переменной.
+    """
 
     ckpt = torch.load(
         CHECKPOINT,
@@ -17,6 +23,16 @@ def load_metrics():
 
 
 def print_variables(metrics):
+    """
+    Выводит список доступных переменных для анализа.
+
+    Args:
+        metrics: dict
+            Словарь метрик прогнозирования по переменным.
+
+    Returns:
+        None
+    """
 
     print("\nAvailable variables:\n")
 
@@ -25,6 +41,23 @@ def print_variables(metrics):
 
 
 def plot_metric(metrics, variable, metric):
+    """
+    Строит график выбранной метрики качества по эпохам обучения.
+
+    Для указанной переменной отображает динамику изменения
+    ошибки прогнозирования на протяжении обучения модели.
+
+    Args:
+        metrics: dict
+            Словарь метрик прогнозирования.
+        variable: str
+            Название анализируемой переменной.
+        metric: str
+            Метрика для отображения ("mse" или "mae").
+
+    Returns:
+        None
+    """
 
     values = metrics[variable][metric]
 
@@ -54,6 +87,20 @@ def plot_metric(metrics, variable, metric):
 
 
 def main():
+    """
+    Запускает интерактивный режим анализа метрик прогнозирования.
+
+    Алгоритм:
+    1. Загружает сохраненные метрики.
+    2. Отображает список доступных переменных.
+    3. Запрашивает выбор переменной.
+    4. Запрашивает выбор метрики.
+    5. Строит соответствующий график.
+    6. Повторяет процесс до выхода пользователя.
+
+    Returns:
+        None
+    """
 
     metrics = load_metrics()
 

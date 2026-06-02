@@ -6,6 +6,57 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class CausalEnv:
+    """
+    Среда для моделирования причинно-следственных зависимостей с использованием
+    временных рядов и графа причинности (SCM).
+
+    Класс предоставляет интерфейс оркужения для RL:
+    - reset(): сброс состояния среды и получение начальных наблюдений
+    - step(actions): выполнение действия (предсказаний) и получение награды
+
+    Атрибуты:
+    ----------
+    raw_data : pandas.DataFrame
+        Исходные данные без нормализации.
+    data : pandas.DataFrame
+        Нормализованные числовые данные для обучения/предсказания.
+    scalers : dict
+        Словарь StandardScaler для каждого столбца, используемый для денормализации.
+    graph : networkx.DiGraph
+        Направленный граф причинных зависимостей между переменными.
+        Ребра должны иметь атрибут "lag" для временного лага.
+    lookback : int
+        Количество прошлых шагов, используемых для построения признаков.
+    H : int
+        Горизонт прогнозирования (количество шагов вперед).
+    vars : list
+        Список имен переменных в графе.
+    t : int
+        Текущий индекс времени в данных.
+
+    Методы:
+    --------
+    reset():
+        Сбрасывает текущее время до значения lookback и возвращает начальные наблюдения.
+
+    _obs():
+        Генерирует наблюдение для текущего времени t.
+        Для каждой переменной собирает:
+            - значения родительских переменных с учетом лагов
+            - собственную историю переменной
+        Возвращает словарь {variable: torch.Tensor(features)}.
+
+    step(actions):
+        Выполняет шаг среды:
+        1. Принимает словарь actions {variable: predicted_values}.
+        2. Вычисляет награды для каждой переменной как отрицательное MAE между
+           предсказанными и истинными нормализованными значениями.
+        3. Обновляет текущее время t.
+        4. Возвращает кортеж (observations, rewards, done), где:
+            - observations: словарь наблюдений после шага
+            - rewards: словарь наград по переменным
+            - done: булево значение окончания эпизода/эпохи
+    """
 
     def __init__(self, data, graph, lookback=10, horizon=1):
         self.raw_data = data.copy()
@@ -48,7 +99,7 @@ class CausalEnv:
 
                 feats.append(x)
 
-            # Include self-history
+            # Включение прошлих значений самой переменной
             self_series = self.data[v].values[self.t - self.lookback:self.t]
             feats.append(self_series)
 
@@ -62,9 +113,7 @@ class CausalEnv:
     def step(self, actions):
         rewards = {}
 
-        # ==================================================
-        # compute per-variable rewards as negative MAE
-        # ==================================================
+        # Вознаграждение - отрицательная средная абсолютная ошибка (MAE)
         for v in self.vars:
 
             if v not in self.data.columns:
@@ -79,11 +128,10 @@ class CausalEnv:
             if len(true) < self.H:
                 continue
 
-            # Convert to torch tensor on the same device as pred
             true = torch.tensor(true, dtype=torch.float32, device=pred.device)
             pred = pred.float().to(pred.device)
 
-            # MAE reward on normalized values
+            # MAE для нормализованных значений
             mae = torch.mean(torch.abs(true - pred))
 
             # reward per agent = -MAE

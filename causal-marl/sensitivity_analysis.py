@@ -5,40 +5,44 @@ import matplotlib.pyplot as plt
 from scm_graph import load_scm_graph
 from train import train
 
+# Скрипт для анализа чувствительности модели к гиперпараметрам (sensitivity analysis)
+# в причинно-следственной RL-среде на основе SCM-графа и временных рядов.
 
-# =========================================================
+# Позволяет сравнить влияние параметров обучения (gamma или lookback)
+# на качество обучения и прогнозирования модели.
+
+# Функциональность:
+# 1. Загрузка временных рядов и SCM-графа.
+# 2. Проведение серии обучений модели при разных значениях гиперпараметра.
+# 3. Сохранение результатов обучения (reward и forecast metrics).
+# 4. Сохранение сырых результатов в numpy-файл.
+# 5. Визуализация и интерактивное сравнение результатов:
+#    - reward по эпохам
+#    - MSE/MAE по переменным
+# 6. Интерактивный CLI-интерфейс для анализа результатов.
+
 # CONFIG
-# =========================================================
 DATA_PATH = "data.csv"
 SCM_PATH = "scm.csv"
 
 MODE = "gamma"   # "gamma" or "lookback"
 
-GAMMAS = [0.90, 0.95, 0.98]
+GAMMAS = [0.90, 0.95, 0.99]
 LOOKBACKS = [5, 10, 20]
 
-EPISODES = 15
+EPISODES = 3
 
-
-# =========================================================
 # LOAD DATA
-# =========================================================
-data = pd.read_csv(DATA_PATH).select_dtypes(include=[np.number])
+data = pd.read_csv(DATA_PATH).select_dtypes(include=[np.number]).tail(100)
 valid_nodes = list(data.columns)
 
 graph = load_scm_graph(SCM_PATH, valid_nodes)
 graph = graph.subgraph(valid_nodes).copy()
 
-
-# =========================================================
-# STORAGE
-# =========================================================
+# OUTPUT
 results = {}
 
-
-# =========================================================
 # RUN SWEEP
-# =========================================================
 param_grid = GAMMAS if MODE == "gamma" else LOOKBACKS
 
 for param in param_grid:
@@ -47,9 +51,9 @@ for param in param_grid:
 
     if MODE == "gamma":
         gamma = param
-        lookback = 48
+        lookback = 10
     else:
-        gamma = 0.98
+        gamma = 0.99
         lookback = param
 
     (
@@ -71,7 +75,7 @@ for param in param_grid:
         episodes=EPISODES,
         gamma=gamma,
         lookback=lookback,
-        log_every=100
+        log_every=50
     )
 
     results[param] = {
@@ -80,23 +84,16 @@ for param in param_grid:
     }
 
 
-# =========================================================
 # SAVE RAW RESULTS
-# =========================================================
 np.save("sensitivity_results.npy", results)
 print("\nSaved sensitivity_results.npy")
 
-
-# =========================================================
 # PLOTTING HELPERS
-# =========================================================
 def get_param_list(results):
     return list(results.keys())
 
-
 def get_variables(results, param):
     return list(results[param]["forecast_metrics"].keys())
-
 
 def plot_reward_comparison(results):
     plt.figure(figsize=(10, 5))
@@ -117,7 +114,6 @@ def plot_reward_comparison(results):
 
     plt.show()
 
-
 def plot_metric_comparison(results, variable, metric):
 
     plt.figure(figsize=(10, 5))
@@ -126,9 +122,7 @@ def plot_metric_comparison(results, variable, metric):
 
         if variable not in results[param]["forecast_metrics"]:
             continue
-
         values = results[param]["forecast_metrics"][variable][metric]
-
         plt.plot(values, marker="o", label=f"{param}")
 
     plt.title(f"{metric.upper()} Comparison | {variable}")
@@ -143,10 +137,7 @@ def plot_metric_comparison(results, variable, metric):
 
     plt.show()
 
-
-# =========================================================
 # INTERACTIVE VIEWER
-# =========================================================
 print("\n=== SENSITIVITY ANALYSIS VIEWER ===")
 
 while True:
@@ -165,15 +156,11 @@ while True:
     if choice == "q":
         break
 
-    # -----------------------------
     # REWARD COMPARISON
-    # -----------------------------
     if choice == "1":
         plot_reward_comparison(results)
 
-    # -----------------------------
     # MSE / MAE COMPARISON
-    # -----------------------------
     elif choice in ["2", "3"]:
 
         metric = "mse" if choice == "2" else "mae"

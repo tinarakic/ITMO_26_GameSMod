@@ -4,29 +4,39 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-
-# ==================================================
 # CONFIG
-# ==================================================
 CHECKPOINT_PATH = "best_epoch.pth"
 SAVE_DIR = "plots"
 
 
-# ==================================================
 # LOAD CHECKPOINT
-# ==================================================
 def load_checkpoint(path):
+    '''
+    Загружает checkpoint-файл.
+    '''
     return torch.load(path, map_location="cpu", weights_only=False)
 
 
-# ==================================================
-# DUAL AXIS PLOT
-# ==================================================
 def plot_dual_axis(x, y1, y2, title,
                    y1_label, y2_label,
                    y1_color, y2_color,
                    style1, style2,
                    save_path):
+    """
+    Создает и сохраняет график суммарной и средней награды и loss.
+    Args:
+        x (numpy.ndarray): Значения оси X (эпохи).
+        y1 (list[float] | numpy.ndarray): Данные для левой оси Y.
+        y2 (list[float] | numpy.ndarray): Данные для правой оси Y.
+        title (str): Заголовок графика.
+        y1_label (str): Подпись левой оси.
+        y2_label (str): Подпись правой оси.
+        y1_color (str): Цвет левого графика.
+        y2_color (str): Цвет правого графика.
+        style1 (str): Маркер стиля для левого графика (например, 'b-o').
+        style2 (str): Маркер стиля для правого графика (например, 'g--s').
+        save_path (str): Путь для сохранения PNG файла.
+    """
 
     fig, ax1 = plt.subplots(figsize=(12, 6))
 
@@ -47,10 +57,21 @@ def plot_dual_axis(x, y1, y2, title,
     plt.close()
 
 
-# ==================================================
-# MULTI-AGENT PLOT (legend OUTSIDE RIGHT)
-# ==================================================
+# MULTI-AGENT PLOT 
 def plot_multi_agent(epochs, data_dict, title, ylabel, save_path):
+    """
+    Визуализирует индивидуальные кривые обучения для каждого агента на одном графике.
+
+    Args:
+        epochs (numpy.ndarray): Массив номеров эпох (ось X).
+        data_dict (dict[str | int, list[float]]): Метрики агентов, где ключ — ID агента.
+        title (str): Заголовок графика.
+        ylabel (str): Подпись оси Y.
+        save_path (str): Путь для сохранения PNG файла.
+
+    Returns:
+        None
+    """
 
     plt.figure(figsize=(12, 6))
 
@@ -58,24 +79,22 @@ def plot_multi_agent(epochs, data_dict, title, ylabel, save_path):
 
     for agent, values in data_dict.items():
 
-        # ---- SAFETY CHECK ----
         if values is None:
             continue
         if len(values) == 0:
             continue
 
-        # align length with epochs
         values = np.array(values)
 
         if len(values) != len(epochs):
-            print(f"⚠️ Skipping {agent}: len(values)={len(values)} != len(epochs)={len(epochs)}")
+            print(f"Skipping {agent}: len(values)={len(values)} != len(epochs)={len(epochs)}")
             continue
 
         plt.plot(epochs, values, linewidth=2, marker="o", label=str(agent))
         valid_plots += 1
 
     if valid_plots == 0:
-        print(f"⚠️ No valid data for {title}, skipping plot")
+        print(f"No valid data for {title}, skipping plot")
         return
 
     plt.title(title)
@@ -93,11 +112,12 @@ def plot_multi_agent(epochs, data_dict, title, ylabel, save_path):
     plt.savefig(save_path, dpi=300, bbox_inches="tight")
     plt.close()
 
-# ==================================================
-# MAIN
-# ==================================================
-def main():
 
+# MAIN
+def main():
+    """
+    Основная функция для загрузки checkpoint и генерации графиков наград и loss.
+    """
     os.makedirs(SAVE_DIR, exist_ok=True)
 
     ckpt = load_checkpoint(CHECKPOINT_PATH)
@@ -112,9 +132,7 @@ def main():
 
     epochs = np.arange(1, len(reward_total) + 1)
 
-    # ==================================================
     # REWARD
-    # ==================================================
     plot_dual_axis(
         epochs,
         reward_total,
@@ -129,9 +147,7 @@ def main():
         os.path.join(SAVE_DIR, "reward_per_epoch.png")
     )
 
-    # ==================================================
     # LOSS
-    # ==================================================
     plot_dual_axis(
         epochs,
         loss_total,
@@ -146,9 +162,7 @@ def main():
         os.path.join(SAVE_DIR, "loss_per_epoch.png")
     )
 
-    # ==================================================
-    # REWARD PER AGENT (legend outside)
-    # ==================================================
+    # REWARD PER AGENT 
     if reward_per_agent:
         plot_multi_agent(
             epochs,
@@ -158,9 +172,7 @@ def main():
             os.path.join(SAVE_DIR, "reward_per_agent.png")
         )
 
-    # ==================================================
-    # LOSS PER AGENT (NEW)
-    # ==================================================
+    # LOSS PER AGENT 
     if loss_per_agent:
         plot_multi_agent(
             epochs,
@@ -171,8 +183,6 @@ def main():
         )
 
 
-# ==================================================
 # RUN
-# ==================================================
 if __name__ == "__main__":
     main()

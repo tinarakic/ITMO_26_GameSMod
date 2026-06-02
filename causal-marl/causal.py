@@ -61,7 +61,27 @@ def causal_importance(env, policies):
 # PLOT CAUSAL GRAPH
 def plot_causal(graph, scores, top_n=None, save_path="causal_importance.png", figsize=(12,8)):
     """
-    Визуализирует граф SCM с весами по causal importance и сохраняет изображение.
+        Визуализирует направленный граф причинно-следственных связей (SCM) с
+    весами ребер, отражающими causal importance, и сохраняет изображение.
+
+    Для каждого ребра графа устанавливается вес из словаря scores. Опционально
+    можно оставить только топ-N наиболее значимых ребер. Узлы раскрашиваются
+    по степени, а ребра рисуются с толщиной, пропорциональной их весу.
+
+    Args:
+        graph: networkx.DiGraph
+            Исходный направленный граф SCM.
+        scores: dict
+            Словарь {(parent, target): score} с causal importance для ребер.
+        top_n: int, optional
+            Если указано, оставляются только top-N ребер с наибольшим весом.
+        save_path: str, optional
+            Путь для сохранения итогового изображения (по умолчанию "causal_importance.png").
+        figsize: tuple, optional
+            Размер фигуры (ширина, высота) в дюймах (по умолчанию (12,8)).
+
+    Returns:
+        None: отображает граф и сохраняет его как изображение.
     """
     G = graph.copy()
     
