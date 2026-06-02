@@ -23,7 +23,7 @@ EPISODES = 30
 # =========================================================
 # LOAD DATA
 # =========================================================
-data = pd.read_csv(DATA_PATH).select_dtypes(include=[np.number]).tail(100)
+data = pd.read_csv(DATA_PATH).select_dtypes(include=[np.number])
 valid_nodes = list(data.columns)
 
 graph = load_scm_graph(SCM_PATH, valid_nodes)
