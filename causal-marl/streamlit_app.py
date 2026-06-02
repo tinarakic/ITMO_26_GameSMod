@@ -651,7 +651,7 @@ if st.button("Run Forecast"):
     
     # --- DATETIME INDEX ---
     last_date = pd.to_datetime(raw_data['datetime'].max())
-    forecast_dates = pd.date_range(start=last_date + pd.Timedelta(hours=1), periods=steps_ahead, freq='D')
+    forecast_dates = pd.date_range(start=last_date + pd.Timedelta(hours=1), periods=steps_ahead, freq='H')
     df.index = forecast_dates
 
     st.subheader("Forecast Output")
