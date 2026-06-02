@@ -12,12 +12,10 @@ from environment import CausalEnv
 from data_utils import denormalize, normalize_data
 from causal import causal_importance
 
-
 # CONFIG
 CHECKPOINT_PATH = "best_epoch.pth"
 DATA_PATH = "data.csv"
 SCM_PATH = "scm.csv"
-
 
 # PAGE CONFIG
 st.set_page_config(
@@ -25,7 +23,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
-
 
 # THEME
 st.markdown("""
@@ -35,16 +32,16 @@ header {
 }
             
 :root {
-    --bg: #050b14;
-    --bg-2: #07111f;
-    --card: rgba(8, 18, 34, 0.92);
-    --card-2: rgba(13, 25, 45, 0.96);
-    --line: rgba(96, 165, 250, 0.18);
-    --text: #e5eefc;
-    --muted: #8aa3c7;
-    --accent: #3b82f6;
-    --accent-2: #60a5fa;
-    --accent-3: #2563eb;
+    --bg: #0a0f1a;           
+    --bg-2: #1a1128;         
+    --card: rgba(20, 15, 40, 0.85);
+    --card-2: rgba(30, 20, 50, 0.90);
+    --line: rgba(255, 122, 122, 0.25);  
+    --text: #fefefe;    
+    --muted: #f0c0c0;        
+    --accent: #ff7a7a;    
+    --accent-2: #f6a5c0;
+    --accent-3: #fbc2a3;
     --success: #22c55e;
     --warning: #f59e0b;
     --danger: #ef4444;
@@ -52,13 +49,13 @@ header {
 }
 
 html, body, [class*="css"] {
-    background: radial-gradient(circle at top, #0f1d35 0%, var(--bg) 42%, #03070e 100%);
+    background: radial-gradient(circle at top, #0f1d35 0%, var(--bg) 50%, #120918 100%);
     color: var(--text);
     font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .stApp {
-    background: radial-gradient(circle at top, #0f1d35 0%, var(--bg) 42%, #03070e 100%);
+    background: radial-gradient(circle at top, #0f1d35 0%, var(--bg) 50%, #120918 100%);
     color: var(--text);
 }
 
@@ -66,7 +63,22 @@ html, body, [class*="css"] {
     padding: 1.6rem 2rem 2rem !important;
 }
 
-h1, h2, h3, h4, h5, h6, p, span, label, div {
+h1 {
+    font-weight: 900;
+    letter-spacing: -0.04em;
+
+    /* gradient text */
+    background: linear-gradient(135deg, #ff7a7a, #f6a5c0, #fbc2a3);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+
+    /* fallback */
+    color: #ff7a7a;
+
+    text-shadow: 0 10px 30px rgba(255, 122, 122, 0.15);
+}
+                       
+h2, h3, h4, h5, h6, p, span, label, div {
     color: var(--text);
 }
 
@@ -80,32 +92,19 @@ h2 {
     letter-spacing: -0.02em;
 }
 
-section[data-testid="stVerticalBlock"],
-.st-emotion-cache-1r6slb0,
-.st-emotion-cache-13ln4jf {
-    background: #050b14 !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-}
-            
-div[data-testid="stHeader"], #MainMenu, footer {
-    visibility: hidden;
-}
-
 .stButton > button {
     background: linear-gradient(135deg, var(--accent), var(--accent-3));
     color: white;
-    border: 1px solid rgba(96, 165, 250, 0.35);
+    border: 1px solid rgba(255,122,122,0.4);
     border-radius: 14px;
     padding: 0.65rem 1.1rem;
     font-weight: 700;
-    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.32);
+    box-shadow: 0 10px 24px rgba(255,122,122,0.32);
 }
 
 .stButton > button:hover {
-    background: linear-gradient(135deg, #60a5fa, #1d4ed8);
-    border-color: rgba(147, 197, 253, 0.6);
+    background: linear-gradient(135deg, var(--accent-2), var(--accent-3));
+    border-color: rgba(246,165,192,0.6);
 }
 
 /* Remove NumberInput borders completely */
@@ -123,38 +122,26 @@ div[data-testid="stHeader"], #MainMenu, footer {
     background: rgba(38, 39, 48, 0.95) !important;
 }
 
-/* Remove internal top/bottom lines */
-[data-testid="stNumberInput"] input {
-    border: none !important;
-    outline: none !important;
-    box-shadow: none !important;
-    background: transparent !important;
-}
-
 [data-baseweb="tag"] {
-    background: rgba(37, 99, 235, 0.18) !important;
-    color: #dbeafe !important;
+    background: rgba(255,122,122,0.18) !important;
+    color: #fefefe !important;
     border-radius: 999px !important;
-}
-
-[data-testid="stMultiselect"] div[role="button"] {
-    background: rgba(6, 13, 25, 0.92) !important;
 }
 
 [data-testid="stDataFrame"] {
     border-radius: 16px;
     overflow: hidden;
-    border: 1px solid rgba(96, 165, 250, 0.15);
+    border: 1px solid rgba(255,122,122,0.15);
 }
 
 [data-testid="stDataFrame"] [role="grid"] {
-    background: rgba(7, 17, 31, 0.96);
+    background: rgba(30, 20, 50, 0.95);
     color: var(--text);
 }
 
 [data-testid="stMetric"] {
-    background: linear-gradient(180deg, rgba(13, 25, 45, 0.96), rgba(6, 13, 25, 0.96));
-    border: 1px solid rgba(96, 165, 250, 0.15);
+    background: linear-gradient(180deg, rgba(30,20,50,0.95), rgba(20,15,40,0.92));
+    border: 1px solid rgba(255,122,122,0.15);
     border-radius: 16px;
     padding: 1rem;
     box-shadow: var(--shadow);
@@ -165,17 +152,12 @@ div[data-testid="stHeader"], #MainMenu, footer {
 }
 
 hr {
-    border-color: rgba(96, 165, 250, 0.18);
+    border-color: rgba(255,122,122,0.18);
 }
 
-/* Plotly container: navy dark background, no white bubbles */
+/* Plotly container */
 div.plotly-container {
     background: transparent !important;
-    color: var(--text) !important;
-}
-
-/* Sankey node labels: no extra bundle/sneaky label boxes */
-.jn-tn, .jn-as, .jn-bo {
     color: var(--text) !important;
 }
 </style>
@@ -192,6 +174,7 @@ valid_nodes = list(data_norm.columns)
 # LOAD SCM GRAPH 
 graph = load_scm_graph(SCM_PATH, valid_nodes)
 graph = graph.subgraph(valid_nodes).copy()
+
 
 scm_df = pd.read_csv(SCM_PATH)
 directed_edges = scm_df[scm_df["Link type i --- j"] == "-->"].copy()
@@ -221,8 +204,23 @@ policies, input_sizes = load_model()
 env = CausalEnv(data_norm, graph)
 
 # HEADER
-st.title("Causal-based MARL Cryptocurrency Forecasting Dashboard")
+st.markdown("""
+<div style="display:flex; align-items:center; gap:10px;">
+    <div style="font-size:38px;">🔮</div>
+    <div style="
+        font-size:38px;
+        font-weight:800;
+        background: linear-gradient(135deg, #ff7a7a, #f6a5c0, #fbc2a3);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.03em;
+    ">
+        Causal-based MARL Cryptocurrency Forecasting Dashboard
+    </div>
+</div>
+""", unsafe_allow_html=True)
 st.caption("Interactive dashboard for SCM-based forecasting, displaying structural relationships, predicted trajectories, and causal contribution flows between variables.")
+
 
 # SCM VISUALIZATION
 st.subheader("Structura Causal Model")
@@ -234,6 +232,7 @@ net = Network(
     directed=True
 )
 net.barnes_hut()
+
 
 for n in graph.nodes:
     if "whale" in n:
@@ -316,7 +315,6 @@ div.vis-network canvas {
 """
 html = html.replace("</head>", f"{css_patch}</head>")
 
-# GRAPH CONTAINER WITH BOTTOM BORDER
 st.markdown("""
 <style>
 .graph-divider {
@@ -695,9 +693,9 @@ if st.button("Run Forecast"):
     df = pd.DataFrame()
     for col in df_norm_forecast.columns:
         df[col] = denormalize(torch.tensor(df_norm_forecast[col].values), scalers[col])
-    
+
     last_date = pd.to_datetime(raw_data['datetime'].max())
-    forecast_dates = pd.date_range(start=last_date + pd.Timedelta(hours=1), periods=steps_ahead, freq='H')
+    forecast_dates = pd.date_range(start=last_date + pd.Timedelta(hours=1), periods=steps_ahead, freq='h')
     df.index = forecast_dates
 
     st.subheader("Forecast Output")
@@ -753,7 +751,6 @@ if st.button("Run Forecast"):
                 use_container_width=True
             )
 
-
             # OUTGOING INFLUENCE FLOW
             st.subheader("Causal Impact Flow")
 
@@ -767,7 +764,6 @@ if st.button("Run Forecast"):
                 use_container_width=True
             )
 
-
             # IMPACT TABLE
             st.subheader("Causal Impact Table")
 
@@ -775,7 +771,6 @@ if st.button("Run Forecast"):
                 directed_edges["Variable i"].isin(selected_vars)
             ].copy()
 
-            # Remove self-links
             outgoing = outgoing[
                 outgoing["Variable i"] != outgoing["Variable j"]
 ]
