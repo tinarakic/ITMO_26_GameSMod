@@ -258,6 +258,15 @@ def train(
 
             ep_losses[v].append(float(loss.detach().cpu()))
 
+            # ======================================================
+            # LOSS PER AGENT
+            # ======================================================
+        for v in env.vars:
+            if len(ep_losses[v]) > 0:
+                loss_per_agent[v].append(float(np.mean(ep_losses[v])))
+            else:
+                loss_per_agent[v].append(0.0)
+
         # ======================================================
         # METRICS
         # ======================================================
