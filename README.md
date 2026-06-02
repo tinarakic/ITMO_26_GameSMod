@@ -159,7 +159,7 @@ pip install -r requirements.txt
 ### 2. Подготовка данных
 
 Положите временной ряд в `data.csv`, а описание причинной структуры в `scm.csv`.  
-В `scm.csv` должны быть заданы узлы графа и направленные рёбра в output формате библиотеки (`tigramite`)[https://github.com/jakobrunge/tigramite].
+В `scm.csv` должны быть заданы узлы графа и направленные рёбра в output формате библиотеки [`tigramite`](https://github.com/jakobrunge/tigramite).
 
 ### 3. Запуск обучения
 
