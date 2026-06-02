@@ -403,7 +403,7 @@ def train(
 
         # CAUSAL IMPORTANCE
         causal_scores.append(
-            compute_causal_importance(env, policies)
+            compute_causal_importance(env)
         )
 
             
