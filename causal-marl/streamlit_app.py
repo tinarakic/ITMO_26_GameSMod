@@ -730,7 +730,7 @@ if st.button("Run Forecast"):
                 legend=dict(orientation="h", yanchor="top", y=-0.25, xanchor="center", x=0.5),
                 xaxis=dict(
                     title="Date",
-                    tickformat="%Y-%m-%d",
+                    tickformat="%Y-%m-%d %H:%M",
                     gridcolor="rgba(96,165,250,0.15)",
                     zeroline=False
                 ),
